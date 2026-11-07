@@ -694,9 +694,7 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
         </div>
         <div class="banner-actions">
           <button class="btn btn-outline btn-sm" onclick="refreshSessions()">🔄 Refresh</button>
-          <button id="btnCoachSignIn" class="btn btn-outline btn-sm" onclick="openCoachAuthModal()">🔒 Coach Sign-In</button>
-          <button id="btnCoachStatus" class="btn btn-outline btn-sm" style="display:none; background:#fff7ed; border-color:var(--brand); color:var(--brand);" onclick="signOutCoachMode()" title="Tap to exit Coach Mode">🔓 Coach Mode</button>
-          <button id="btnAddSession" class="btn btn-primary btn-sm" style="display:none;" onclick="openCoachModal()">+ Coach: Add Session</button>
+          <button id="btnAddSession" class="btn btn-primary btn-sm" onclick="openCoachModal()">⚙️ Coach: Add Session</button>
         </div>
       </div>
 
@@ -788,23 +786,6 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
         <div class="modal-actions">
           <button type="button" class="btn btn-outline" onclick="closeSignupModal()">Cancel</button>
           <button type="button" id="confirmSignupBtn" class="btn btn-primary" onclick="submitSignup()">Confirm Sign-Up</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- COACH SIGN-IN MODAL -->
-    <div id="coachAuthModalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeCoachAuthModal()">
-      <div class="modal" style="max-width: 400px;">
-        <h3>🔒 Coach Sign-In</h3>
-        <p class="sub">Enter your authorized Coach email to add, edit, or cancel training sessions.</p>
-        <div class="field">
-          <label>Coach Email Address</label>
-          <input type="email" id="coachEmailInput" placeholder="e.g. coach@f45training.com" onkeydown="if(event.key==='Enter'){event.preventDefault();submitCoachAuth();}">
-        </div>
-        <div id="coachAuthError" style="display:none; color:var(--danger); font-size:13px; font-weight:600; margin-bottom:10px;"></div>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-outline" onclick="closeCoachAuthModal()">Cancel</button>
-          <button type="button" id="confirmCoachAuthBtn" class="btn btn-primary" onclick="submitCoachAuth()">Unlock Coach Mode</button>
         </div>
       </div>
     </div>
@@ -1061,24 +1042,6 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
       function initApp() {
         switchTab(ACTIVE_TAB);
         renderAll();
-        if (!APP_STATE.isCoach && CLIENT_COACH_EMAIL) {
-          google.script.run
-            .withSuccessHandler(res => {
-              if (res && res.isCoach && res.state) {
-                APP_STATE = res.state;
-                renderAll();
-              } else {
-                CLIENT_COACH_EMAIL = '';
-                try {
-                  if (typeof localStorage !== 'undefined' && localStorage) {
-                    localStorage.removeItem('hyrox_coach_email');
-                  }
-                } catch (e) {}
-              }
-            })
-            .withFailureHandler(() => {})
-            .verifyCoachEmail(CLIENT_COACH_EMAIL, Boolean(APP_STATE.useTestSheet));
-        }
       }
 
       function switchTab(tab) {
@@ -1111,11 +1074,6 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
         badge.style.display = APP_STATE.useTestSheet ? 'inline-block' : 'none';
         const link = document.getElementById('sheetLink');
         if (APP_STATE.spreadsheetUrl) link.href = APP_STATE.spreadsheetUrl;
-
-        const isCoach = Boolean(APP_STATE.isCoach);
-        document.getElementById('btnCoachSignIn').style.display = isCoach ? 'none' : 'inline-flex';
-        document.getElementById('btnCoachStatus').style.display = isCoach ? 'inline-flex' : 'none';
-        document.getElementById('btnAddSession').style.display = isCoach ? 'inline-flex' : 'none';
 
         const upcomingEl = document.getElementById('upcomingContainer');
         const pastEl = document.getElementById('pastContainer');
@@ -1178,7 +1136,7 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
             badgeHtml += '<span class="badge badge-open">' + count + ' signed up</span>';
           }
         }
-        if (!isReadOnly && APP_STATE.isCoach) {
+        if (!isReadOnly) {
           badgeHtml += '<button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="openManageModal(' + s.rowNumber + ')">⚙️ Manage</button>';
         }
 
@@ -1611,10 +1569,6 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
 
       // Coach Add Session Modal Logic
       function openCoachModal() {
-        if (!APP_STATE.isCoach) {
-          openCoachAuthModal();
-          return;
-        }
         document.getElementById('coachModalBackdrop').classList.add('open');
       }
       function closeCoachModal() {
@@ -1693,10 +1647,6 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
       }
 
       function openManageModal(rowNumber) {
-        if (!APP_STATE.isCoach) {
-          openCoachAuthModal();
-          return;
-        }
         const session = (APP_STATE.sessions || []).find(s => s.rowNumber === rowNumber);
         if (!session) return;
 
@@ -3401,9 +3351,6 @@ function coachCreateTrainingSession(payload) {
   try {
     const useTestSheet = Boolean(payload && payload.useTestSheet);
     const ss = getSpreadsheetForMode(useTestSheet);
-    if (!isUserCoach(ss, payload && payload.coachEmail)) {
-      throw new Error('Only coaches can manage training sessions.');
-    }
     const sheet = getTrainingSheet(ss);
     const cols = findTrainingColumns(sheet);
 
@@ -3447,7 +3394,7 @@ function coachCreateTrainingSession(payload) {
     targetRange.setWrap(true);
 
     SpreadsheetApp.flush();
-    return getTrainingAppState(useTestSheet, payload && payload.coachEmail);
+    return getTrainingAppState(useTestSheet);
   } finally {
     lock.releaseLock();
   }
@@ -3462,9 +3409,6 @@ function coachUpdateTrainingSession(payload) {
   try {
     const useTestSheet = Boolean(payload && payload.useTestSheet);
     const ss = getSpreadsheetForMode(useTestSheet);
-    if (!isUserCoach(ss, payload && payload.coachEmail)) {
-      throw new Error('Only coaches can manage training sessions.');
-    }
     const sheet = getTrainingSheet(ss);
     const cols = findTrainingColumns(sheet);
     const targetRow = resolveSessionRowIndex(sheet, cols, Number(payload.rowNumber), payload.sessionKey);
@@ -3558,7 +3502,7 @@ function coachUpdateTrainingSession(payload) {
     }
 
     SpreadsheetApp.flush();
-    return getTrainingAppState(useTestSheet, payload && payload.coachEmail);
+    return getTrainingAppState(useTestSheet);
   } finally {
     lock.releaseLock();
   }
@@ -3573,9 +3517,6 @@ function coachDeleteTrainingSession(payload) {
   try {
     const useTestSheet = Boolean(payload && payload.useTestSheet);
     const ss = getSpreadsheetForMode(useTestSheet);
-    if (!isUserCoach(ss, payload && payload.coachEmail)) {
-      throw new Error('Only coaches can manage training sessions.');
-    }
     const sheet = getTrainingSheet(ss);
     const cols = findTrainingColumns(sheet);
     const targetRow = resolveSessionRowIndex(sheet, cols, Number(payload.rowNumber), payload.sessionKey);
@@ -3583,7 +3524,7 @@ function coachDeleteTrainingSession(payload) {
     sheet.deleteRow(targetRow);
 
     SpreadsheetApp.flush();
-    return getTrainingAppState(useTestSheet, payload && payload.coachEmail);
+    return getTrainingAppState(useTestSheet);
   } finally {
     lock.releaseLock();
   }
