@@ -40,11 +40,46 @@ function getWebAppUrl() {
   }
 }
 
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function handleApiAction(action, payload) {
+  try {
+    const p = payload || {};
+    const useTestSheet = Boolean(p.useTestSheet);
+    let state;
+    if (action === 'getState') {
+      state = getTrainingAppState(useTestSheet, p.coachEmail);
+    } else if (action === 'registerSignup') {
+      state = registerTrainingSignup(p);
+    } else if (action === 'deregisterSignup') {
+      state = deregisterTrainingSignup(p);
+    } else if (action === 'coachCreateSession') {
+      state = coachCreateTrainingSession(p);
+    } else if (action === 'coachUpdateSession') {
+      state = coachUpdateTrainingSession(p);
+    } else if (action === 'coachDeleteSession') {
+      state = coachDeleteTrainingSession(p);
+    } else if (action === 'verifyCoachEmail') {
+      const res = verifyCoachEmail(p.email, useTestSheet);
+      return jsonResponse({ ok: true, isCoach: res.isCoach, state: res.state });
+    } else {
+      throw new Error('Unknown API action: ' + action);
+    }
+    return jsonResponse({ ok: true, state: state });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: (err && err.message) ? err.message : String(err) });
+  }
+}
+
 /**
  * Handles Web App GET requests:
  * 1. Strava Webhook subscription verification (?hub.mode=subscribe&...)
  * 2. Strava OAuth callback (?code=...&state=...)
- * 3. Unified Web App with tabs for Training Sign-Up (?page=training) & Strava Sync (?page=strava)
+ * 3. JSON API (?api=1&action=getState&...)
+ * 4. Unified Web App with tabs for Training Sign-Up (?page=training) & Strava Sync (?page=strava)
  */
 function doGet(e) {
   const params = (e && e.parameter) || {};
@@ -65,12 +100,52 @@ function doGet(e) {
     return handleOAuthCallback(params.code, params.state, params.scope);
   }
 
+  if (params.api === '1') {
+    const action = params.action || 'getState';
+    let payload = {};
+    if (params.payload) {
+      try { payload = JSON.parse(params.payload); } catch (err) {}
+    } else {
+      payload = {
+        useTestSheet: params.test === '1' || params.test === 'true',
+        coachEmail: params.coachEmail || ''
+      };
+    }
+    return handleApiAction(action, payload);
+  }
+
   const initialTab = (params.page || '').toLowerCase() === 'strava' ? 'strava' : (
     (params.page || '').toLowerCase() === 'training' ? 'training' : 'training'
   );
   const useTestSheet = params.test === '1' || params.test === 'true';
 
   return renderUnifiedWebApp(initialTab, useTestSheet);
+}
+
+/**
+ * Handles Web App POST requests:
+ * 1. Standalone GitHub Pages JSON API (Content-Type: text/plain;charset=utf-8 with { api: '1', action, payload })
+ * 2. Strava Webhook activity events (object_type === 'activity')
+ */
+function doPost(e) {
+  try {
+    const raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
+    const data = JSON.parse(raw);
+    if (data && (data.api === '1' || data.action)) {
+      return handleApiAction(data.action || 'getState', data.payload || {});
+    }
+    if (data && data.object_type === 'activity' && data.owner_id) {
+      const athletes = getAllAthletes();
+      const match = athletes.find(a => String(a.athleteId) === String(data.owner_id));
+      if (match) {
+        recalculateAthleteRuns(match);
+      }
+      return jsonResponse({ ok: true });
+    }
+    return jsonResponse({ ok: true });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: (err && err.message) ? err.message : String(err) });
+  }
 }
 
 /**
@@ -3128,13 +3203,20 @@ function getTrainingAppState(useTestSheet, claimedCoachEmail) {
     }
   }
 
+  let stravaClientId = '';
+  try {
+    stravaClientId = String(PropertiesService.getScriptProperties().getProperty('STRAVA_CLIENT_ID') || '').trim();
+  } catch (e) {}
+
   return {
     sessions: sessions,
     roster: getClubRoster(ss),
     isCoach: isUserCoach(ss, claimedCoachEmail),
     detectedEmail: getDetectedUserEmail(),
     useTestSheet: Boolean(useTestSheet),
-    spreadsheetUrl: ss.getUrl()
+    spreadsheetUrl: ss.getUrl(),
+    stravaClientId: stravaClientId,
+    scriptUrl: getWebAppUrl()
   };
 }
 

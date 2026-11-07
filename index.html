@@ -1,43 +1,1840 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <title>F45 Morgan Hill HYROX Hub</title>
-  <meta name="description" content="F45 Training Morgan Hill — HYROX Hub & Strava Club Leaderboard">
-  <meta name="theme-color" content="#11224D">
-  <link rel="icon" type="image/png" href="app_icon_clean.png">
-  <link rel="apple-touch-icon" href="app_icon_512.png">
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #f4f5f7;
-    }
-    iframe {
-      border: none;
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-  </style>
-</head>
-<body>
-  <iframe
-    id="hyrox-frame"
-    title="F45 Morgan Hill HYROX Hub"
-    allow="clipboard-write; fullscreen"
-    allowfullscreen
-  ></iframe>
-  <script>
-    (function () {
-      var baseUrl = "https://script.google.com/macros/s/AKfycbz6EGMxjderUNj_UaP8eYquNdXSv9vnONDBbN674-WwPpd2kfiKKH_j3T3ZtlJjdq1eog/exec";
-      var search = window.location.search || "";
-      document.getElementById("hyrox-frame").src = baseUrl + search;
-    })();
-  </script>
-</body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <title>F45 Morgan Hill HYROX Hub</title>
+    <meta name="description" content="F45 Training Morgan Hill — HYROX Hub & Strava Club Leaderboard">
+    <meta name="theme-color" content="#111827">
+    <link rel="icon" type="image/png" href="app_icon_clean.png">
+    <link rel="apple-touch-icon" href="app_icon_512.png">
+    <style>
+      :root {
+        --brand: #FC4C02;
+        --brand-dark: #e04402;
+        --navy: #111827;
+        --bg: #f3f4f6;
+        --card: #ffffff;
+        --border: #e5e7eb;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --green: #059669;
+        --green-bg: #ecfdf5;
+        --amber: #d97706;
+        --amber-bg: #fffbeb;
+        --danger: #dc2626;
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body {
+        overflow-x: hidden;
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 0 0 calc(60px + env(safe-area-inset-bottom, 0px)) 0;
+      }
+      .topbar {
+        background: var(--navy);
+        color: #fff;
+        padding: 14px 16px 0 16px;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      }
+      .topbar-inner {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+      .brand-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px 10px;
+        margin-bottom: 10px;
+      }
+      .brand-title {
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .test-badge {
+        background: #f59e0b;
+        color: #111827;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 3px 8px;
+        border-radius: 999px;
+        text-transform: uppercase;
+      }
+      .sheet-link {
+        color: #9ca3af;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+      }
+      .sheet-link:hover { color: #fff; }
+      .nav-tabs {
+        display: flex;
+        gap: 6px;
+      }
+      .nav-tab {
+        background: transparent;
+        color: #9ca3af;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 10px 14px;
+        min-height: 44px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .nav-tab.active {
+        color: #fff;
+        border-bottom-color: var(--brand);
+      }
+      .container {
+        max-width: 760px;
+        margin: 18px auto;
+        padding: 0 14px;
+      }
+      .banner-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .banner-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        min-height: 40px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s;
+        touch-action: manipulation;
+      }
+      .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+      .btn-primary { background: var(--brand); color: #fff; }
+      .btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+      .btn-danger { background: var(--danger); color: #fff; }
+      .btn-danger:hover:not(:disabled) { background: #b91c1c; }
+      .btn-outline {
+        background: #fff;
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+      .btn-outline:hover:not(:disabled) { background: #f9fafb; }
+      .btn-sm { padding: 7px 12px; min-height: 36px; font-size: 12px; border-radius: 6px; }
+      .btn-claim { padding: 5px 10px; min-height: 32px; font-size: 12px; border-radius: 6px; flex-shrink: 0; }
+      .session-card {
+        background: var(--card);
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        margin-bottom: 18px;
+        overflow: hidden;
+      }
+      .session-header {
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(to right, #ffffff, #fff7ed);
+      }
+      .session-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 999px;
+      }
+      .badge-slotted { background: #dbeafe; color: #1d4ed8; }
+      .badge-group { background: #e0e7ff; color: #4338ca; }
+      .badge-open { background: var(--green-bg); color: var(--green); }
+      .badge-full { background: #fee2e2; color: var(--danger); }
+      .session-title {
+        font-size: 18px;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+        color: var(--navy);
+        line-height: 1.3;
+        word-break: break-word;
+      }
+      .session-subtitle {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--brand);
+        margin: 0 0 10px 0;
+      }
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .meta-item {
+        word-break: break-word;
+        line-height: 1.4;
+      }
+      .meta-item strong { color: var(--text); }
+      .details-box {
+        margin-top: 10px;
+        font-size: 13px;
+        color: #4b5563;
+        background: #f9fafb;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .session-body { padding: 16px 18px; }
+      .section-label {
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin: 0 0 10px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .slots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .slot-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: #fff;
+        min-width: 0;
+      }
+      .slot-card.slot-open { border-color: #cbd5e1; }
+      .slot-card.slot-full { background: #f9fafb; }
+      .slot-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .slot-time {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--navy);
+      }
+      .slot-cap {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      .spot-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        background: #f3f4f6;
+        border-radius: 6px;
+        padding: 6px 8px;
+        margin-bottom: 5px;
+        font-size: 13px;
+        min-height: 38px;
+      }
+      .spot-row.empty {
+        background: #fff;
+        border: 1px dashed #cbd5e1;
+        color: var(--muted);
+      }
+      .spot-name {
+        font-weight: 600;
+        color: var(--text);
+        word-break: break-word;
+        min-width: 0;
+        flex: 1;
+      }
+      .remove-btn {
+        background: transparent;
+        border: none;
+        color: #9ca3af;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 4px 8px;
+        min-width: 34px;
+        min-height: 34px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        touch-action: manipulation;
+      }
+      .remove-btn:hover { color: var(--danger); background: #fee2e2; }
+      .signup-chip-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+      .signup-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        background: #f9fafb;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 14px;
+        min-height: 42px;
+      }
+      .waitlist-section {
+        border-top: 1px dashed var(--border);
+        padding-top: 14px;
+        margin-top: 12px;
+      }
+      /* Loading Skeleton */
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.45; }
+      }
+      .skeleton-box {
+        background: #e5e7eb;
+        border-radius: 8px;
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+      /* Modal Styles */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(17,24,39,0.6);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        padding: 16px;
+      }
+      .modal-backdrop.open { display: flex; }
+      .modal {
+        background: #fff;
+        border-radius: 14px;
+        max-width: 440px;
+        width: 100%;
+        padding: 22px;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+        max-height: 92vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .modal h3 { margin: 0 0 6px 0; font-size: 18px; color: var(--navy); }
+      .modal p.sub { margin: 0 0 16px 0; font-size: 13px; color: var(--muted); }
+      .field { margin-bottom: 14px; }
+      .field label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 5px;
+        color: #374151;
+      }
+      .field select, .field input[type="text"], .field input[type="email"], .field input[type="number"], .field textarea {
+        width: 100%;
+        padding: 10px 12px;
+        min-height: 44px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 16px;
+        background: #fff;
+      }
+      .form-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .form-grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+      }
+      .mode-toggle {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .mode-btn {
+        padding: 10px 9px;
+        min-height: 44px;
+        border: 1px solid #d1d5db;
+        background: #f9fafb;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .mode-btn.active {
+        border-color: var(--brand);
+        background: #fff7ed;
+        color: var(--brand);
+      }
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 18px;
+      }
+      .toast {
+        position: fixed;
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--navy);
+        color: #fff;
+        padding: 10px 18px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        display: none;
+        z-index: 200;
+        max-width: 92vw;
+        text-align: center;
+      }
+      .strava-card {
+        background: white;
+        padding: 28px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        max-width: 460px;
+        margin: 24px auto;
+        text-align: center;
+      }
+      @media (max-width: 600px) {
+        .topbar {
+          padding: 10px 12px 0 12px;
+        }
+        .brand-row {
+          margin-bottom: 8px;
+        }
+        .brand-title {
+          font-size: 16px;
+        }
+        .sheet-link {
+          font-size: 12px;
+        }
+        .nav-tabs {
+          gap: 0;
+        }
+        .nav-tab {
+          flex: 1;
+          padding: 10px 6px;
+          font-size: 13px;
+          min-height: 44px;
+        }
+        .container {
+          margin: 12px auto;
+          padding: 0 10px;
+        }
+        .banner-bar {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 8px;
+        }
+        .banner-actions {
+          width: 100%;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .banner-actions .btn {
+          flex: 1 1 auto;
+          min-height: 42px;
+          font-size: 13px;
+        }
+        .session-header {
+          padding: 14px 14px;
+        }
+        .session-body {
+          padding: 14px 14px;
+        }
+        .session-title {
+          font-size: 16px;
+        }
+        .meta-grid {
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+        .section-label {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 8px;
+        }
+        .section-label .btn {
+          width: 100%;
+          min-height: 42px;
+          font-size: 13px;
+        }
+        .slots-grid {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        .spot-row {
+          min-height: 44px;
+          padding: 6px 10px;
+        }
+        .btn-claim {
+          min-height: 40px;
+          padding: 8px 14px;
+          font-size: 13px;
+        }
+        .remove-btn {
+          min-width: 42px;
+          min-height: 42px;
+          font-size: 16px;
+        }
+        .signup-item {
+          min-height: 46px;
+          padding: 6px 10px 6px 12px;
+        }
+        .modal-backdrop {
+          padding: 0;
+          align-items: flex-end;
+        }
+        .modal {
+          max-width: 100%;
+          border-radius: 18px 18px 0 0;
+          padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)) 16px;
+          max-height: 90vh;
+        }
+        .modal-actions {
+          position: sticky;
+          bottom: calc(-1 * (20px + env(safe-area-inset-bottom, 0px)));
+          background: #fff;
+          padding: 12px 0 calc(8px + env(safe-area-inset-bottom, 0px)) 0;
+          margin-top: 14px;
+          border-top: 1px solid var(--border);
+          display: grid;
+          grid-template-columns: 1fr 1.3fr;
+          gap: 10px;
+        }
+        .modal-actions .btn {
+          width: 100%;
+          min-height: 44px;
+          font-size: 15px;
+        }
+        .form-grid-2 {
+          grid-template-columns: 1fr;
+          gap: 0;
+        }
+        .strava-card {
+          padding: 20px 16px;
+          margin: 12px auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="brand-row">
+          <div class="brand-title">
+            <span>🔥 F45 Morgan Hill HYROX</span>
+            <span id="testBadge" class="test-badge" style="display:none;">Test Sheet</span>
+          </div>
+          <a id="sheetLink" class="sheet-link" href="https://docs.google.com/spreadsheets/d/1oKlUXQ7qOEDI_kx-gkjPc8cZN6QTbx0A4AGZTUyEYFw/edit" target="_blank" rel="noopener">📄 View Google Sheet ↗</a>
+        </div>
+        <div class="nav-tabs">
+          <button id="tabBtnTraining" class="nav-tab active" onclick="switchTab('training')">🏋️ Training Sign-Up</button>
+          <button id="tabBtnStrava" class="nav-tab" onclick="switchTab('strava')">🏃 Strava Run Sync</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: TRAINING SIGN-UP -->
+    <div id="tabTraining" class="container">
+      <div class="banner-bar">
+        <div style="font-size: 13px; color: var(--muted);">
+          Tap a session or time slot below to sign up (solo or doubles) or remove your signup.
+        </div>
+        <div class="banner-actions">
+          <button class="btn btn-outline btn-sm" onclick="refreshSessions()">🔄 Refresh</button>
+          <button id="btnAddSession" class="btn btn-primary btn-sm" onclick="openCoachModal()">⚙️ Coach: Add Session</button>
+        </div>
+      </div>
+
+      <div id="upcomingContainer">
+        <div class="session-card">
+          <div class="session-header">
+            <div class="skeleton-box" style="width: 140px; height: 20px; margin-bottom: 10px;"></div>
+            <div class="skeleton-box" style="width: 75%; height: 24px; margin-bottom: 8px;"></div>
+            <div class="skeleton-box" style="width: 45%; height: 16px;"></div>
+          </div>
+          <div class="session-body">
+            <div class="skeleton-box" style="width: 100%; height: 88px; margin-bottom: 10px;"></div>
+            <div class="skeleton-box" style="width: 100%; height: 54px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="pastWrapper" style="margin-top: 24px; display: none;">
+        <button id="togglePastBtn" class="btn btn-outline" style="width:100%;" onclick="togglePastSessions()">
+          🕓 Show Past Training Sessions
+        </button>
+        <div id="pastContainer" style="display:none; margin-top: 14px;"></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: STRAVA RUN ACCOUNTABILITY -->
+    <div id="tabStrava" class="container" style="display:none;">
+      <div class="strava-card">
+        <h2 style="color: var(--brand); margin-top: 0;">🏃 F45 Run Accountability</h2>
+        <p style="color: #555; line-height: 1.5; font-size: 15px;">
+          Connect your Strava account to automatically sync your runs &amp; weekend Hyrox workouts to the club sheet!
+        </p>
+        <form id="authForm" action="https://www.strava.com/oauth/authorize" method="GET" target="_top" onsubmit="return validateStravaForm()">
+          <input type="hidden" id="stravaClientIdInput" name="client_id" value="">
+          <input type="hidden" name="response_type" value="code">
+          <input type="hidden" id="stravaRedirectUriInput" name="redirect_uri" value="">
+          <input type="hidden" name="approval_prompt" value="auto">
+          <input type="hidden" name="scope" value="read,activity:read_all">
+          <input type="hidden" id="stateInput" name="state" value="">
+
+          <div class="field" style="text-align:left;">
+            <label>Select your name in the sheet:</label>
+            <select id="nameSelect" onchange="toggleCustomStravaName(this.value)">
+              <option value="" disabled selected>-- Choose your name --</option>
+              <option value="__NEW__">➕ Not listed? Add my name...</option>
+            </select>
+          </div>
+
+          <div id="customNameDiv" class="field" style="display: none; text-align:left;">
+            <label>Enter your name as it should appear in the table:</label>
+            <input type="text" id="customNameInput" placeholder="e.g. First Name / Nickname">
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%; padding:13px; font-size:16px;">
+            Connect with Strava
+          </button>
+        </form>
+        <div style="font-size: 12px; color: #888; margin-top: 15px;">
+          Counts running activities + weekend "Hyrox" workouts. Manual numbers are preserved if higher!
+        </div>
+      </div>
+    </div>
+
+    <!-- SIGN-UP MODAL -->
+    <div id="signupModalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeSignupModal()">
+      <div class="modal">
+        <h3 id="modalTitle">Sign Up for Training</h3>
+        <p id="modalSubtitle" class="sub"></p>
+
+        <div id="slotPickerField" class="field" style="display:none;">
+          <label>Time Slot</label>
+          <select id="modalSlotSelect"></select>
+        </div>
+
+        <div class="field">
+          <label>Training Format (Solo and Doubles both use 1 slot)</label>
+          <div class="mode-toggle">
+            <button type="button" id="btnModeSolo" class="mode-btn active" onclick="setPairMode('solo')">👤 Solo</button>
+            <button type="button" id="btnModePair" class="mode-btn" onclick="setPairMode('pair')">👥 Doubles / Pair</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label id="athlete1Label">Athlete Name</label>
+          <select id="athlete1Select" onchange="toggleCustomInput('athlete1Select', 'athlete1Custom')"></select>
+          <input type="text" id="athlete1Custom" placeholder="Type name..." style="display:none; margin-top:6px;">
+        </div>
+
+        <div id="athlete2Field" class="field" style="display:none;">
+          <label>Partner Name</label>
+          <select id="athlete2Select" onchange="toggleCustomInput('athlete2Select', 'athlete2Custom')"></select>
+          <input type="text" id="athlete2Custom" placeholder="Type partner's name..." style="display:none; margin-top:6px;">
+        </div>
+
+        <div class="field" id="noteField" style="display:none;">
+          <label>Optional Note (e.g. "Robin's friend")</label>
+          <input type="text" id="signupNoteInput" placeholder="Optional note...">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeSignupModal()">Cancel</button>
+          <button type="button" id="confirmSignupBtn" class="btn btn-primary" onclick="submitSignup()">Confirm Sign-Up</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COACH ADD SESSION MODAL -->
+    <div id="coachModalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeCoachModal()">
+      <div class="modal" style="max-width: 500px;">
+        <h3>⚙️ Coach: Add Training Session</h3>
+        <p class="sub">Inserts a new session row at the top of the TRAINING SESSIONS sheet.</p>
+
+        <div class="field">
+          <label>Date Header (Column A)</label>
+          <input type="text" id="coachDate" placeholder="e.g. TRAINING ON: Sunday 11/22/26">
+        </div>
+        <div class="field">
+          <label>Event Name (Column D)</label>
+          <input type="text" id="coachEvent" value="HYROX training!">
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <label>Time (Column B)</label>
+            <input type="text" id="coachTime" placeholder="e.g. 10:45am-12:15pm">
+          </div>
+          <div class="field">
+            <label>RSVP By (Column C)</label>
+            <input type="text" id="coachRsvp" placeholder="e.g. Sat 11/21 at noon">
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <label>Location (Column E)</label>
+            <input type="text" id="coachLocation" value="F45">
+          </div>
+          <div class="field">
+            <label>Coach / Coordinated By (Column I)</label>
+            <input type="text" id="coachCoord" value="Jade">
+          </div>
+        </div>
+        <div class="field">
+          <label>Sign-Up Mode</label>
+          <div class="mode-toggle">
+            <button type="button" id="coachModeGroup" class="mode-btn active" onclick="setCoachSessionMode('group')">👥 Group Session</button>
+            <button type="button" id="coachModeSlotted" class="mode-btn" onclick="setCoachSessionMode('slotted')">⏱️ Time Slots</button>
+          </div>
+        </div>
+
+        <div id="coachGroupConfig" style="background:#f9fafb; border:1px solid var(--border); padding:12px; border-radius:8px; margin-bottom:14px;">
+          <div class="field" style="margin:0;">
+            <label># of Member Slots (0 = unlimited)</label>
+            <input type="number" id="coachGroupCap" value="20" min="0" max="100">
+          </div>
+        </div>
+
+        <div id="coachSlotsConfig" style="display:none; background:#f9fafb; border:1px solid var(--border); padding:12px; border-radius:8px; margin-bottom:14px;">
+          <div class="form-grid-3">
+            <div class="field" style="margin:0;">
+              <label>First Slot</label>
+              <input type="text" id="coachFirstSlot" value="10:30 AM">
+            </div>
+            <div class="field" style="margin:0;">
+              <label>Every (mins)</label>
+              <input type="number" id="coachIntervalMins" value="8" min="1" max="120">
+            </div>
+            <div class="field" style="margin:0;">
+              <label># of Slots</label>
+              <input type="number" id="coachNumSlots" value="12" min="1" max="40">
+            </div>
+          </div>
+          <div class="field" style="margin:10px 0 0 0;">
+            <label>Groups / Athletes per Time Slot</label>
+            <input type="number" id="coachSlotCap" value="2" min="1" max="10">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Workout Notes (Optional, Column J)</label>
+          <textarea id="coachNotes" rows="3" placeholder="Workout format, station notes..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeCoachModal()">Cancel</button>
+          <button type="button" id="coachCreateBtn" class="btn btn-primary" onclick="submitCoachNewSession()">Create Session</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COACH MANAGE EXISTING SESSION MODAL -->
+    <div id="manageModalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeManageModal()">
+      <div class="modal" style="max-width: 500px;">
+        <h3>⚙️ Coach: Manage Session</h3>
+        <p id="manageModalSubtitle" class="sub"></p>
+
+        <div class="field">
+          <label>Date Header (Column A)</label>
+          <input type="text" id="manageDate" placeholder="e.g. TRAINING ON: Sunday 11/22/26">
+        </div>
+        <div class="field">
+          <label>Event Name (Column D)</label>
+          <input type="text" id="manageEvent" placeholder="e.g. HYROX training!">
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <label>Time (Column B)</label>
+            <input type="text" id="manageTime" placeholder="e.g. 10:45am-12:15pm">
+          </div>
+          <div class="field">
+            <label>RSVP By (Column C)</label>
+            <input type="text" id="manageRsvp" placeholder="e.g. Sat 11/21 at noon">
+          </div>
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <label>Location (Column E)</label>
+            <input type="text" id="manageLocation" placeholder="e.g. F45">
+          </div>
+          <div class="field">
+            <label>Coach / Coordinated By (Column I)</label>
+            <input type="text" id="manageCoord" placeholder="e.g. Jade">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Sign-Up Mode</label>
+          <div class="mode-toggle">
+            <button type="button" id="manageModeGroup" class="mode-btn" onclick="setManageSessionMode('group')">👥 Group Session</button>
+            <button type="button" id="manageModeSlotted" class="mode-btn" onclick="setManageSessionMode('slotted')">⏱️ Time Slots</button>
+          </div>
+        </div>
+
+        <div id="manageGroupConfig" style="display:none; background:#f9fafb; border:1px solid var(--border); padding:12px; border-radius:8px; margin-bottom:14px;">
+          <div class="field" style="margin:0;">
+            <label># of Member Slots (0 = unlimited)</label>
+            <input type="number" id="manageGroupCap" value="20" min="0" max="100" oninput="updateManagePreview()">
+          </div>
+          <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="adjustManageSlots('group', 2)">+2 Slots</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="adjustManageSlots('group', 5)">+5 Slots</button>
+          </div>
+          <div id="manageGroupHint" style="font-size:12px; color:var(--muted); margin-top:8px;"></div>
+        </div>
+
+        <div id="manageSlotsConfig" style="display:none; background:#f9fafb; border:1px solid var(--border); padding:12px; border-radius:8px; margin-bottom:14px;">
+          <div class="form-grid-3">
+            <div class="field" style="margin:0;">
+              <label>First Slot</label>
+              <input type="text" id="manageFirstSlot" value="10:30 AM" oninput="updateManagePreview()">
+            </div>
+            <div class="field" style="margin:0;">
+              <label>Every (mins)</label>
+              <input type="number" id="manageIntervalMins" value="8" min="1" max="120" oninput="updateManagePreview()">
+            </div>
+            <div class="field" style="margin:0;">
+              <label># of Slots</label>
+              <input type="number" id="manageNumSlots" value="12" min="1" max="40" oninput="updateManagePreview()">
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="adjustManageSlots('slotted', 1)">+1 Time Slot</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="adjustManageSlots('slotted', 2)">+2 Time Slots</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="adjustManageSlots('slotted', 4)">+4 Time Slots</button>
+          </div>
+          <div class="field" style="margin:12px 0 0 0;">
+            <label>Groups / Athletes per Time Slot</label>
+            <input type="number" id="manageSlotCap" value="2" min="1" max="10" oninput="updateManagePreview()">
+          </div>
+          <div id="manageSchedulePreview" style="font-size:12px; color:var(--muted); margin-top:10px; line-height:1.4;"></div>
+        </div>
+
+        <div class="field">
+          <label>Workout Notes (Column J)</label>
+          <textarea id="manageNotes" rows="3" placeholder="Workout format, station notes..."></textarea>
+        </div>
+
+        <details style="margin-bottom:14px; font-size:13px; color:#374151;">
+          <summary style="cursor:pointer; font-weight:700; padding:4px 0;">💲 Edit Cost &amp; Registration Info (Column F)</summary>
+          <div class="field" style="margin-top:8px; margin-bottom:0;">
+            <textarea id="manageCost" rows="3" placeholder="Cost and registration policy..."></textarea>
+          </div>
+        </details>
+
+        <div style="border-top:1px dashed var(--border); padding-top:12px; margin-top:6px;">
+          <button type="button" class="btn btn-outline btn-sm" style="color:var(--danger); border-color:#fecaca; width:100%;" onclick="openDeleteSessionModal()">
+            🗑️ Delete / Cancel Session
+          </button>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeManageModal()">Cancel</button>
+          <button type="button" id="manageSaveBtn" class="btn btn-primary" onclick="submitManageSession()">Save Changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DELETE SESSION CONFIRMATION MODAL -->
+    <div id="deleteSessionModalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeDeleteSessionModal()">
+      <div class="modal" style="max-width: 400px;">
+        <h3>🗑️ Delete / Cancel Session?</h3>
+        <p id="deleteSessionModalText" class="sub" style="font-size: 14px; color: var(--text); margin: 10px 0 18px 0; line-height: 1.5;"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeDeleteSessionModal()">Keep Session</button>
+          <button type="button" id="confirmDeleteSessionBtn" class="btn btn-danger" onclick="executeDeleteSession()">Yes, Delete Session</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REMOVE CONFIRMATION MODAL -->
+    <div id="removeModalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeRemoveModal()">
+      <div class="modal" style="max-width: 380px;">
+        <h3>🗑️ Remove Sign-Up?</h3>
+        <p id="removeModalText" class="sub" style="font-size: 15px; color: var(--text); margin: 10px 0 18px 0;"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeRemoveModal()">Cancel</button>
+          <button type="button" id="confirmRemoveBtn" class="btn btn-danger" onclick="executeDeregister()">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+      const SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbz6EGMxjderUNj_UaP8eYquNdXSv9vnONDBbN674-WwPpd2kfiKKH_j3T3ZtlJjdq1eog/exec';
+      const URL_PARAMS = new URLSearchParams(window.location.search || '');
+      const INITIAL_USE_TEST = URL_PARAMS.get('test') === '1' || URL_PARAMS.get('test') === 'true';
+      const INITIAL_TAB = (URL_PARAMS.get('page') || '').toLowerCase() === 'strava' ? 'strava' : 'training';
+
+      let APP_STATE = {
+        sessions: [],
+        roster: [],
+        isCoach: false,
+        detectedEmail: '',
+        useTestSheet: INITIAL_USE_TEST,
+        spreadsheetUrl: INITIAL_USE_TEST
+          ? 'https://docs.google.com/spreadsheets/d/1KZtKRFMQXrjFlcfSRrViLlp-48SOJIyzenV5ru58Ez4/edit'
+          : 'https://docs.google.com/spreadsheets/d/1oKlUXQ7qOEDI_kx-gkjPc8cZN6QTbx0A4AGZTUyEYFw/edit',
+        stravaClientId: '',
+        scriptUrl: SCRIPT_API_URL
+      };
+      let ACTIVE_TAB = INITIAL_TAB;
+      let PAST_OPEN = false;
+      let CLIENT_COACH_EMAIL = '';
+      try {
+        if (typeof localStorage !== 'undefined' && localStorage) {
+          CLIENT_COACH_EMAIL = String(localStorage.getItem('hyrox_coach_email') || '').trim().toLowerCase();
+        }
+      } catch (e) {}
+
+      let MODAL_CTX = {
+        rowNumber: null,
+        sessionKey: '',
+        listType: 'member',
+        mode: 'group',
+        slotTime: null,
+        pairMode: 'solo'
+      };
+      let REMOVE_CTX = null;
+      let COACH_MODE = 'group';
+      let MANAGE_CTX = {
+        rowNumber: null,
+        sessionKey: '',
+        mode: 'group',
+        minSlots: 1,
+        minSlotCap: 1,
+        minGroupCap: 0
+      };
+
+      async function callApi(action, payload = {}) {
+        const res = await fetch(SCRIPT_API_URL, {
+          method: 'POST',
+          credentials: 'omit',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ api: '1', action, payload })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Request failed');
+        return data.state;
+      }
+
+      function getActiveCoachEmail() {
+        return String(APP_STATE.detectedEmail || CLIENT_COACH_EMAIL || '').trim().toLowerCase();
+      }
+
+      async function initApp() {
+        switchTab(ACTIVE_TAB);
+        document.getElementById('testBadge').style.display = APP_STATE.useTestSheet ? 'inline-block' : 'none';
+        if (APP_STATE.spreadsheetUrl) {
+          document.getElementById('sheetLink').href = APP_STATE.spreadsheetUrl;
+        }
+        try {
+          const state = await callApi('getState', {
+            useTestSheet: Boolean(APP_STATE.useTestSheet),
+            coachEmail: getActiveCoachEmail()
+          });
+          APP_STATE = state;
+          renderAll();
+        } catch (err) {
+          APP_STATE.error = err.message || String(err);
+          renderAll();
+        }
+      }
+
+      function switchTab(tab) {
+        ACTIVE_TAB = tab;
+        document.getElementById('tabTraining').style.display = tab === 'training' ? 'block' : 'none';
+        document.getElementById('tabStrava').style.display = tab === 'strava' ? 'block' : 'none';
+        document.getElementById('tabBtnTraining').classList.toggle('active', tab === 'training');
+        document.getElementById('tabBtnStrava').classList.toggle('active', tab === 'strava');
+      }
+
+      function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.style.display = 'block';
+        clearTimeout(window.__toastTimer);
+        window.__toastTimer = setTimeout(() => { el.style.display = 'none'; }, 3400);
+      }
+
+      function escapeHtmlClient(s) {
+        return String(s || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      function populateStravaRosterSelect() {
+        const sel = document.getElementById('nameSelect');
+        if (!sel) return;
+        const prevVal = sel.value;
+        const roster = APP_STATE.roster || [];
+        let html = '<option value="" disabled ' + (!prevVal ? 'selected' : '') + '>-- Choose your name --</option>';
+        roster.forEach(name => {
+          const isSel = prevVal === name ? ' selected' : '';
+          html += '<option value="' + escapeHtmlClient(name) + '"' + isSel + '>' + escapeHtmlClient(name) + '</option>';
+        });
+        html += '<option value="__NEW__"' + (prevVal === '__NEW__' ? ' selected' : '') + '>➕ Not listed? Add my name...</option>';
+        sel.innerHTML = html;
+
+        const clientIdEl = document.getElementById('stravaClientIdInput');
+        if (clientIdEl && APP_STATE.stravaClientId) {
+          clientIdEl.value = APP_STATE.stravaClientId;
+        }
+        const redirectEl = document.getElementById('stravaRedirectUriInput');
+        if (redirectEl) {
+          redirectEl.value = APP_STATE.scriptUrl || SCRIPT_API_URL;
+        }
+      }
+
+      function renderAll() {
+        const badge = document.getElementById('testBadge');
+        badge.style.display = APP_STATE.useTestSheet ? 'inline-block' : 'none';
+        const link = document.getElementById('sheetLink');
+        if (APP_STATE.spreadsheetUrl) link.href = APP_STATE.spreadsheetUrl;
+
+        populateStravaRosterSelect();
+
+        const upcomingEl = document.getElementById('upcomingContainer');
+        const pastEl = document.getElementById('pastContainer');
+        const pastWrap = document.getElementById('pastWrapper');
+
+        if (APP_STATE.error) {
+          upcomingEl.innerHTML = '<div class="session-card"><div class="session-body" style="color:#dc2626;">Error: ' +
+            escapeHtmlClient(APP_STATE.error) + '</div></div>';
+          return;
+        }
+
+        const sessions = APP_STATE.sessions || [];
+        const upcoming = sessions.filter(s => s.isUpcoming);
+        const past = sessions.filter(s => !s.isUpcoming);
+
+        if (upcoming.length === 0) {
+          upcomingEl.innerHTML = '<div class="session-card"><div class="session-body" style="text-align:center; color:#6b7280; padding:30px;">No upcoming training sessions currently scheduled.</div></div>';
+        } else {
+          upcomingEl.innerHTML = upcoming.map(s => renderSessionCard(s, false)).join('');
+        }
+
+        if (past.length > 0) {
+          pastWrap.style.display = 'block';
+          document.getElementById('togglePastBtn').textContent =
+            (PAST_OPEN ? '🔼 Hide Past Training Sessions (' : '🕓 Show Past Training Sessions (') + past.length + ')';
+          pastEl.style.display = PAST_OPEN ? 'block' : 'none';
+          pastEl.innerHTML = past.map(s => renderSessionCard(s, true)).join('');
+        } else {
+          pastWrap.style.display = 'none';
+        }
+      }
+
+      function togglePastSessions() {
+        PAST_OPEN = !PAST_OPEN;
+        renderAll();
+      }
+
+      function renderSessionCard(s, isReadOnly) {
+        const isSlotted = s.signup.mode === 'slotted';
+        let badgeHtml = isSlotted
+          ? '<span class="badge badge-slotted">⏱️ Time-Slotted</span>'
+          : '<span class="badge badge-group">👥 Group Session</span>';
+
+        if (isSlotted) {
+          const totalSpots = s.signup.slots.reduce((acc, sl) => acc + sl.capacity, 0);
+          const filledSpots = s.signup.slots.reduce((acc, sl) => acc + sl.entries.length, 0);
+          const openSpots = Math.max(0, totalSpots - filledSpots);
+          badgeHtml += openSpots > 0
+            ? '<span class="badge badge-open">' + openSpots + ' of ' + totalSpots + ' spots open</span>'
+            : '<span class="badge badge-full">All ' + totalSpots + ' slots full</span>';
+        } else {
+          const count = s.signup.entries.length;
+          const cap = Number(s.signup.capacity) || 0;
+          if (cap > 0) {
+            const openSpots = Math.max(0, cap - count);
+            badgeHtml += openSpots > 0
+              ? '<span class="badge badge-open">' + openSpots + ' of ' + cap + ' spots open</span>'
+              : '<span class="badge badge-full">All ' + cap + ' spots full</span>';
+          } else {
+            badgeHtml += '<span class="badge badge-open">' + count + ' signed up</span>';
+          }
+        }
+        if (!isReadOnly) {
+          badgeHtml += '<button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="openManageModal(' + s.rowNumber + ')">⚙️ Manage</button>';
+        }
+
+        let metaHtml = '';
+        if (s.timeText) metaHtml += '<div class="meta-item">🕒 <strong>Time:</strong> ' + escapeHtmlClient(s.timeText) + '</div>';
+        if (s.locationText) metaHtml += '<div class="meta-item">📍 <strong>Location:</strong> ' + escapeHtmlClient(s.locationText) + '</div>';
+        if (s.rsvpText) metaHtml += '<div class="meta-item">📅 <strong>RSVP By:</strong> ' + escapeHtmlClient(s.rsvpText) + '</div>';
+        if (s.coordText) metaHtml += '<div class="meta-item">📣 <strong>Coach:</strong> ' + escapeHtmlClient(s.coordText) + '</div>';
+
+        let notesHtml = '';
+        if (s.notesText) {
+          notesHtml += '<div class="details-box"><strong>Workout Notes:</strong>\n' + escapeHtmlClient(s.notesText) + '</div>';
+        }
+        if (s.costText) {
+          notesHtml += '<details style="margin-top:8px; font-size:12px; color:#6b7280;"><summary style="cursor:pointer; font-weight:600;">💲 View Cost &amp; Registration Info</summary><div style="margin-top:6px; padding:8px; background:#f9fafb; border-radius:6px;">' + escapeHtmlClient(s.costText) + '</div></details>';
+        }
+
+        // Member Sign-Up Body
+        let memberHtml = '';
+        if (isSlotted) {
+          const openSlotsCount = s.signup.slots.filter(sl => sl.entries.length < sl.capacity).length;
+          memberHtml += '<div class="section-label"><span>Member Time Slots (' + escapeHtmlClient(s.signup.banner || '2 per slot') + ')</span>';
+          if (!isReadOnly && openSlotsCount > 0) {
+            memberHtml += '<button class="btn btn-primary btn-sm" onclick="openSignupModal(' + s.rowNumber + ', \'member\', null)">+ Sign Up for a Slot</button>';
+          }
+          memberHtml += '</div><div class="slots-grid">';
+
+          s.signup.slots.forEach((sl, slotIdx) => {
+            const isFull = sl.entries.length >= sl.capacity;
+            memberHtml += '<div class="slot-card ' + (isFull ? 'slot-full' : 'slot-open') + '">';
+            memberHtml += '<div class="slot-top"><span class="slot-time">' + escapeHtmlClient(sl.time) + '</span>';
+            memberHtml += '<span class="slot-cap">' + sl.entries.length + '/' + sl.capacity + '</span></div>';
+
+            for (let i = 0; i < sl.capacity; i++) {
+              const entry = sl.entries[i];
+              if (entry) {
+                memberHtml += '<div class="spot-row"><span class="spot-name">' + (i + 1) + '. ' + escapeHtmlClient(entry) + '</span>';
+                if (!isReadOnly) {
+                  memberHtml += '<button class="remove-btn" title="Remove signup" onclick="confirmDeregisterByIdx(' +
+                    s.rowNumber + ', \'member\', ' + slotIdx + ', ' + i + ')">✕</button>';
+                }
+                memberHtml += '</div>';
+              } else {
+                memberHtml += '<div class="spot-row empty"><span>' + (i + 1) + '. Open</span>';
+                if (!isReadOnly) {
+                  memberHtml += '<button class="btn btn-primary btn-claim" onclick="openSignupModalBySlotIdx(' +
+                    s.rowNumber + ', ' + slotIdx + ')">+ Claim</button>';
+                }
+                memberHtml += '</div>';
+              }
+            }
+            memberHtml += '</div>';
+          });
+          memberHtml += '</div>';
+        } else {
+          const groupCap = Number(s.signup.capacity) || 0;
+          const groupCount = s.signup.entries.length;
+          const isGroupFull = groupCap > 0 && groupCount >= groupCap;
+          const labelCount = groupCap > 0 ? (groupCount + ' / ' + groupCap) : String(groupCount);
+          memberHtml += '<div class="section-label"><span>Member Sign-Up (' + labelCount + ')</span>';
+          if (!isReadOnly && !isGroupFull) {
+            memberHtml += '<button class="btn btn-primary btn-sm" onclick="openSignupModal(' + s.rowNumber + ', \'member\', null)">+ Member Sign Up</button>';
+          }
+          memberHtml += '</div>';
+
+          if (s.signup.entries.length === 0) {
+            memberHtml += '<div style="font-size:13px; color:#9ca3af; margin-bottom:14px; font-style:italic;">No member sign-ups yet. Be the first!</div>';
+          } else {
+            memberHtml += '<div class="signup-chip-list">';
+            s.signup.entries.forEach((entry, idx) => {
+              memberHtml += '<div class="signup-item"><span class="spot-name">' + (idx + 1) + '. ' + escapeHtmlClient(entry) + '</span>';
+              if (!isReadOnly) {
+                memberHtml += '<button class="remove-btn" title="Remove signup" onclick="confirmDeregisterByIdx(' +
+                  s.rowNumber + ', \'member\', -1, ' + idx + ')">✕</button>';
+              }
+              memberHtml += '</div>';
+            });
+            memberHtml += '</div>';
+          }
+        }
+
+        // Non-Member Waitlist Section
+        let waitlistHtml = '<div class="waitlist-section"><div class="section-label"><span>Non-Member / Waitlist (' + s.waitlist.length + ')</span>';
+        if (!isReadOnly) {
+          waitlistHtml += '<button class="btn btn-outline btn-sm" onclick="openSignupModal(' + s.rowNumber + ', \'waitlist\', null)">+ Join Non-Member / Waitlist</button>';
+        }
+        waitlistHtml += '</div>';
+
+        if (s.waitlist.length === 0) {
+          waitlistHtml += '<div style="font-size:13px; color:#9ca3af; font-style:italic;">No non-member / waitlist entries.</div>';
+        } else {
+          waitlistHtml += '<div class="signup-chip-list">';
+          s.waitlist.forEach((entry, idx) => {
+            waitlistHtml += '<div class="signup-item"><span class="spot-name">' + (idx + 1) + '. ' + escapeHtmlClient(entry) + '</span>';
+            if (!isReadOnly) {
+              waitlistHtml += '<button class="remove-btn" title="Remove from waitlist" onclick="confirmDeregisterByIdx(' +
+                s.rowNumber + ', \'waitlist\', -1, ' + idx + ')">✕</button>';
+            }
+            waitlistHtml += '</div>';
+          });
+          waitlistHtml += '</div>';
+        }
+        waitlistHtml += '</div>';
+
+        return '<div class="session-card">' +
+          '<div class="session-header">' +
+            '<div class="session-badges">' + badgeHtml + '</div>' +
+            '<h3 class="session-title">' + escapeHtmlClient(s.dateText || s.eventText || 'Training Session') + '</h3>' +
+            (s.eventText ? '<div class="session-subtitle">' + escapeHtmlClient(s.eventText) + '</div>' : '') +
+            '<div class="meta-grid">' + metaHtml + '</div>' +
+            notesHtml +
+          '</div>' +
+          '<div class="session-body">' + memberHtml + waitlistHtml + '</div>' +
+        '</div>';
+      }
+
+      function populateRosterSelect(selectId) {
+        const sel = document.getElementById(selectId);
+        const roster = APP_STATE.roster || [];
+        let html = '<option value="" disabled selected>-- Select name --</option>';
+        roster.forEach(name => {
+          html += '<option value="' + escapeHtmlClient(name) + '">' + escapeHtmlClient(name) + '</option>';
+        });
+        html += '<option value="__CUSTOM__">➕ Other / Type name...</option>';
+        sel.innerHTML = html;
+      }
+
+      function toggleCustomInput(selectId, inputId) {
+        const val = document.getElementById(selectId).value;
+        const inp = document.getElementById(inputId);
+        if (val === '__CUSTOM__') {
+          inp.style.display = 'block';
+          inp.focus();
+        } else {
+          inp.style.display = 'none';
+        }
+      }
+
+      function setPairMode(mode) {
+        MODAL_CTX.pairMode = mode;
+        document.getElementById('btnModeSolo').classList.toggle('active', mode === 'solo');
+        document.getElementById('btnModePair').classList.toggle('active', mode === 'pair');
+        document.getElementById('athlete1Label').textContent = mode === 'pair' ? 'Athlete 1' : 'Athlete Name';
+        document.getElementById('athlete2Field').style.display = mode === 'pair' ? 'block' : 'none';
+      }
+
+      function openSignupModalBySlotIdx(rowNumber, slotIdx) {
+        const session = (APP_STATE.sessions || []).find(s => s.rowNumber === rowNumber);
+        const slot = session && session.signup && session.signup.slots && session.signup.slots[slotIdx];
+        openSignupModal(rowNumber, 'member', slot ? slot.time : null);
+      }
+
+      function confirmDeregisterByIdx(rowNumber, listType, slotIdx, entryIdx) {
+        const session = (APP_STATE.sessions || []).find(s => s.rowNumber === rowNumber);
+        if (!session) return;
+        let slotTime = null;
+        let entryText = '';
+        if (listType === 'waitlist') {
+          entryText = (session.waitlist || [])[entryIdx] || '';
+        } else if (session.signup.mode === 'slotted' && slotIdx >= 0) {
+          const slot = (session.signup.slots || [])[slotIdx];
+          if (!slot) return;
+          slotTime = slot.time;
+          entryText = (slot.entries || [])[entryIdx] || '';
+        } else {
+          entryText = (session.signup.entries || [])[entryIdx] || '';
+        }
+        confirmDeregister(rowNumber, listType, slotTime, entryIdx, entryText);
+      }
+
+      function openSignupModal(rowNumber, listType, preselectedSlot) {
+        const session = (APP_STATE.sessions || []).find(s => s.rowNumber === rowNumber);
+        if (!session) return;
+
+        MODAL_CTX.rowNumber = rowNumber;
+        MODAL_CTX.sessionKey = session.dateText;
+        MODAL_CTX.listType = listType;
+        MODAL_CTX.mode = session.signup.mode;
+        MODAL_CTX.slotTime = preselectedSlot;
+
+        document.getElementById('modalTitle').textContent =
+          listType === 'waitlist' ? 'Join Non-Member / Waitlist' : 'Member Sign-Up';
+        document.getElementById('modalSubtitle').textContent =
+          (session.dateText || '') + (session.eventText ? ' — ' + session.eventText : '');
+
+        populateRosterSelect('athlete1Select');
+        populateRosterSelect('athlete2Select');
+        document.getElementById('athlete1Custom').style.display = 'none';
+        document.getElementById('athlete1Custom').value = '';
+        document.getElementById('athlete2Custom').style.display = 'none';
+        document.getElementById('athlete2Custom').value = '';
+        document.getElementById('signupNoteInput').value = '';
+        document.getElementById('noteField').style.display = listType === 'waitlist' ? 'block' : 'none';
+
+        const slotField = document.getElementById('slotPickerField');
+        if (listType === 'member' && session.signup.mode === 'slotted') {
+          slotField.style.display = 'block';
+          const slotSel = document.getElementById('modalSlotSelect');
+          const openSlots = session.signup.slots.filter(sl => sl.entries.length < sl.capacity);
+          slotSel.innerHTML = openSlots.map(sl => {
+            const rem = sl.capacity - sl.entries.length;
+            const selected = (preselectedSlot && sl.time === preselectedSlot) ? ' selected' : '';
+            return '<option value="' + escapeHtmlClient(sl.time) + '"' + selected + '>' +
+              escapeHtmlClient(sl.time) + ' (' + rem + ' spot' + (rem > 1 ? 's' : '') + ' open)</option>';
+          }).join('');
+          slotSel.value = preselectedSlot || (openSlots[0] ? openSlots[0].time : '');
+        } else {
+          slotField.style.display = 'none';
+        }
+
+        setPairMode('solo');
+        document.getElementById('signupModalBackdrop').classList.add('open');
+      }
+
+      function closeSignupModal() {
+        document.getElementById('signupModalBackdrop').classList.remove('open');
+      }
+
+      function resolveSelectedName(selectId, customId) {
+        const selVal = document.getElementById(selectId).value;
+        if (!selVal) return '';
+        if (selVal === '__CUSTOM__') {
+          return document.getElementById(customId).value.trim();
+        }
+        return selVal.trim();
+      }
+
+      async function submitSignup() {
+        const name1 = resolveSelectedName('athlete1Select', 'athlete1Custom');
+        if (!name1) {
+          showToast('⚠️ Please select or enter your name.');
+          return;
+        }
+        let finalEntry = name1;
+        if (MODAL_CTX.pairMode === 'pair') {
+          const name2 = resolveSelectedName('athlete2Select', 'athlete2Custom');
+          if (!name2) {
+            showToast('⚠️ Please select or enter your partner\'s name.');
+            return;
+          }
+          finalEntry = name1 + ' & ' + name2;
+        }
+
+        if (MODAL_CTX.listType === 'waitlist') {
+          const note = document.getElementById('signupNoteInput').value.trim();
+          if (note) finalEntry += ' (' + note + ')';
+        }
+
+        const slotTime = (MODAL_CTX.listType === 'member' && MODAL_CTX.mode === 'slotted')
+          ? document.getElementById('modalSlotSelect').value
+          : null;
+
+        const btn = document.getElementById('confirmSignupBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        const payload = {
+          rowNumber: MODAL_CTX.rowNumber,
+          sessionKey: MODAL_CTX.sessionKey,
+          listType: MODAL_CTX.listType,
+          slotTime: slotTime,
+          entryText: finalEntry,
+          coachEmail: getActiveCoachEmail(),
+          useTestSheet: Boolean(APP_STATE.useTestSheet)
+        };
+
+        try {
+          const newState = await callApi('registerSignup', payload);
+          btn.disabled = false;
+          btn.textContent = 'Confirm Sign-Up';
+          closeSignupModal();
+          APP_STATE = newState;
+          renderAll();
+          showToast('✅ Signed up: ' + finalEntry);
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = 'Confirm Sign-Up';
+          showToast('❌ Sign-up failed: ' + (err.message || err));
+          refreshSessions();
+        }
+      }
+
+      function confirmDeregister(rowNumber, listType, slotTime, entryIndex, entryText) {
+        const where = slotTime ? (' from ' + slotTime) : (listType === 'waitlist' ? ' from the waitlist' : '');
+        REMOVE_CTX = {
+          rowNumber: rowNumber,
+          listType: listType,
+          slotTime: slotTime,
+          entryIndex: entryIndex,
+          entryText: entryText
+        };
+        document.getElementById('removeModalText').textContent =
+          'Remove "' + entryText + '"' + where + '?';
+        const btn = document.getElementById('confirmRemoveBtn');
+        btn.disabled = false;
+        btn.textContent = 'Remove';
+        document.getElementById('removeModalBackdrop').classList.add('open');
+      }
+
+      function closeRemoveModal() {
+        document.getElementById('removeModalBackdrop').classList.remove('open');
+        REMOVE_CTX = null;
+      }
+
+      async function executeDeregister() {
+        if (!REMOVE_CTX) return;
+        const ctx = REMOVE_CTX;
+        const btn = document.getElementById('confirmRemoveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Removing...';
+
+        const session = (APP_STATE.sessions || []).find(s => s.rowNumber === ctx.rowNumber);
+        const payload = {
+          rowNumber: ctx.rowNumber,
+          sessionKey: session ? session.dateText : '',
+          listType: ctx.listType,
+          slotTime: ctx.slotTime,
+          entryIndex: ctx.entryIndex,
+          entryText: ctx.entryText,
+          coachEmail: getActiveCoachEmail(),
+          useTestSheet: Boolean(APP_STATE.useTestSheet)
+        };
+
+        try {
+          const newState = await callApi('deregisterSignup', payload);
+          btn.disabled = false;
+          btn.textContent = 'Remove';
+          closeRemoveModal();
+          APP_STATE = newState;
+          renderAll();
+          showToast('🗑️ Removed ' + ctx.entryText);
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = 'Remove';
+          closeRemoveModal();
+          showToast('❌ Could not remove signup: ' + (err.message || err));
+          refreshSessions();
+        }
+      }
+
+      async function refreshSessions() {
+        showToast('Refreshing from Google Sheet...');
+        try {
+          const newState = await callApi('getState', {
+            useTestSheet: Boolean(APP_STATE.useTestSheet),
+            coachEmail: getActiveCoachEmail()
+          });
+          APP_STATE = newState;
+          renderAll();
+          showToast('Up to date!');
+        } catch (err) {
+          showToast('❌ Error refreshing: ' + (err.message || err));
+        }
+      }
+
+      // Coach Add Session Modal Logic
+      function openCoachModal() {
+        document.getElementById('coachModalBackdrop').classList.add('open');
+      }
+      function closeCoachModal() {
+        document.getElementById('coachModalBackdrop').classList.remove('open');
+      }
+      function setCoachSessionMode(mode) {
+        COACH_MODE = mode;
+        document.getElementById('coachModeGroup').classList.toggle('active', mode === 'group');
+        document.getElementById('coachModeSlotted').classList.toggle('active', mode === 'slotted');
+        document.getElementById('coachGroupConfig').style.display = mode === 'group' ? 'block' : 'none';
+        document.getElementById('coachSlotsConfig').style.display = mode === 'slotted' ? 'block' : 'none';
+      }
+      async function submitCoachNewSession() {
+        const dateText = document.getElementById('coachDate').value.trim();
+        if (!dateText) {
+          showToast('⚠️ Please enter the Date Header (e.g. TRAINING ON: Sunday 11/22/26)');
+          return;
+        }
+        const btn = document.getElementById('coachCreateBtn');
+        btn.disabled = true;
+        btn.textContent = 'Creating...';
+
+        const payload = {
+          dateText: dateText,
+          eventText: document.getElementById('coachEvent').value.trim(),
+          timeText: document.getElementById('coachTime').value.trim(),
+          rsvpText: document.getElementById('coachRsvp').value.trim(),
+          locationText: document.getElementById('coachLocation').value.trim() || 'F45',
+          coordText: document.getElementById('coachCoord').value.trim() || 'Jade',
+          notesText: document.getElementById('coachNotes').value.trim(),
+          mode: COACH_MODE,
+          groupCap: Math.max(0, Number(document.getElementById('coachGroupCap').value) || 0),
+          firstSlot: document.getElementById('coachFirstSlot').value.trim(),
+          intervalMins: Number(document.getElementById('coachIntervalMins').value) || 8,
+          numSlots: Number(document.getElementById('coachNumSlots').value) || 12,
+          slotCap: Number(document.getElementById('coachSlotCap').value) || 2,
+          coachEmail: getActiveCoachEmail(),
+          useTestSheet: Boolean(APP_STATE.useTestSheet)
+        };
+
+        try {
+          const newState = await callApi('coachCreateSession', payload);
+          btn.disabled = false;
+          btn.textContent = 'Create Session';
+          closeCoachModal();
+          APP_STATE = newState;
+          renderAll();
+          showToast('✅ Created new training session!');
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = 'Create Session';
+          showToast('❌ Failed to create session: ' + (err.message || err));
+        }
+      }
+
+      // Coach Manage Existing Session Modal Logic
+      function parseSlotMinsClient(timeStr) {
+        const m = String(timeStr || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+        if (!m) return null;
+        let h = parseInt(m[1], 10);
+        const min = parseInt(m[2], 10);
+        const mer = (m[3] || 'AM').toUpperCase();
+        if (mer === 'PM' && h < 12) h += 12;
+        if (mer === 'AM' && h === 12) h = 0;
+        return h * 60 + min;
+      }
+
+      function formatSlotMinsClient(totalMins) {
+        const h24 = Math.floor(totalMins / 60) % 24;
+        const minPart = totalMins % 60;
+        const ampm = h24 >= 12 ? 'PM' : 'AM';
+        const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+        return h12 + ':' + (minPart < 10 ? '0' + minPart : minPart) + ' ' + ampm;
+      }
+
+      function openManageModal(rowNumber) {
+        const session = (APP_STATE.sessions || []).find(s => s.rowNumber === rowNumber);
+        if (!session) return;
+
+        MANAGE_CTX.rowNumber = rowNumber;
+        MANAGE_CTX.sessionKey = session.dateText || '';
+
+        document.getElementById('manageModalSubtitle').textContent =
+          (session.dateText || '') + (session.eventText ? ' — ' + session.eventText : '');
+
+        document.getElementById('manageDate').value = session.dateText || '';
+        document.getElementById('manageEvent').value = session.eventText || '';
+        document.getElementById('manageTime').value = session.timeText || '';
+        document.getElementById('manageRsvp').value = session.rsvpText || '';
+        document.getElementById('manageLocation').value = session.locationText || '';
+        document.getElementById('manageCoord').value = session.coordText || '';
+        document.getElementById('manageNotes').value = session.notesText || '';
+        document.getElementById('manageCost').value = session.costText || '';
+
+        const isSlotted = session.signup.mode === 'slotted';
+        let firstSlot = '10:30 AM';
+        let intervalMins = 8;
+        let numSlots = 12;
+        let slotCap = 2;
+        let minSlots = 1;
+        let minSlotCap = 1;
+        let groupCap = 20;
+        let minGroupCap = 0;
+
+        if (isSlotted) {
+          const slots = session.signup.slots || [];
+          if (slots.length > 0) {
+            firstSlot = slots[0].time || '10:30 AM';
+            numSlots = slots.length;
+            slotCap = slots.reduce((m, sl) => Math.max(m, sl.capacity || 2), 2);
+          }
+          if (slots.length >= 2) {
+            const t0 = parseSlotMinsClient(slots[0].time);
+            const t1 = parseSlotMinsClient(slots[1].time);
+            if (t0 !== null && t1 !== null && t1 > t0 && (t1 - t0) <= 180) {
+              intervalMins = t1 - t0;
+            }
+          }
+          slots.forEach((sl, idx) => {
+            if ((sl.entries || []).length > 0) {
+              minSlots = Math.max(minSlots, idx + 1);
+              minSlotCap = Math.max(minSlotCap, sl.entries.length);
+            }
+          });
+          minGroupCap = slots.reduce((acc, sl) => acc + (sl.entries || []).length, 0);
+          groupCap = Math.max(20, minGroupCap);
+        } else {
+          const entries = session.signup.entries || [];
+          minGroupCap = entries.length;
+          groupCap = Number(session.signup.capacity) || Math.max(20, minGroupCap);
+          minSlots = Math.max(1, Math.ceil(minGroupCap / 2));
+        }
+
+        MANAGE_CTX.minSlots = minSlots;
+        MANAGE_CTX.minSlotCap = minSlotCap;
+        MANAGE_CTX.minGroupCap = minGroupCap;
+
+        document.getElementById('manageGroupCap').value = groupCap;
+        document.getElementById('manageFirstSlot').value = firstSlot;
+        document.getElementById('manageIntervalMins').value = intervalMins;
+        document.getElementById('manageNumSlots').value = numSlots;
+        document.getElementById('manageSlotCap').value = slotCap;
+
+        setManageSessionMode(isSlotted ? 'slotted' : 'group');
+        document.getElementById('manageModalBackdrop').classList.add('open');
+      }
+
+      function closeManageModal() {
+        document.getElementById('manageModalBackdrop').classList.remove('open');
+      }
+
+      function setManageSessionMode(mode) {
+        MANAGE_CTX.mode = mode;
+        document.getElementById('manageModeGroup').classList.toggle('active', mode === 'group');
+        document.getElementById('manageModeSlotted').classList.toggle('active', mode === 'slotted');
+        document.getElementById('manageGroupConfig').style.display = mode === 'group' ? 'block' : 'none';
+        document.getElementById('manageSlotsConfig').style.display = mode === 'slotted' ? 'block' : 'none';
+        updateManagePreview();
+      }
+
+      function adjustManageSlots(mode, delta) {
+        if (mode === 'group') {
+          const inp = document.getElementById('manageGroupCap');
+          const cur = Number(inp.value) || 0;
+          inp.value = Math.max(MANAGE_CTX.minGroupCap, cur + delta);
+        } else {
+          const inp = document.getElementById('manageNumSlots');
+          const cur = Number(inp.value) || 1;
+          inp.value = Math.min(40, Math.max(MANAGE_CTX.minSlots, cur + delta));
+        }
+        updateManagePreview();
+      }
+
+      function updateManagePreview() {
+        if (MANAGE_CTX.mode === 'group') {
+          const cap = Number(document.getElementById('manageGroupCap').value) || 0;
+          const hint = document.getElementById('manageGroupHint');
+          hint.textContent = cap > 0
+            ? ('Currently ' + MANAGE_CTX.minGroupCap + ' signed up • ' + Math.max(0, cap - MANAGE_CTX.minGroupCap) + ' open spots after saving.')
+            : ('Currently ' + MANAGE_CTX.minGroupCap + ' signed up • Unlimited member spots.');
+        } else {
+          const firstStr = document.getElementById('manageFirstSlot').value.trim() || '10:30 AM';
+          const step = Math.max(1, Number(document.getElementById('manageIntervalMins').value) || 8);
+          const count = Math.max(1, Number(document.getElementById('manageNumSlots').value) || 12);
+          const cap = Math.max(1, Number(document.getElementById('manageSlotCap').value) || 2);
+          const startMins = parseSlotMinsClient(firstStr);
+          const prevEl = document.getElementById('manageSchedulePreview');
+          if (startMins !== null) {
+            const firstFmt = formatSlotMinsClient(startMins);
+            const lastFmt = formatSlotMinsClient(startMins + (count - 1) * step);
+            prevEl.textContent = '📅 ' + count + ' slots from ' + firstFmt + ' to ' + lastFmt +
+              ' (every ' + step + 'm, ' + (count * cap) + ' total spots). Existing sign-ups stay in their slot order.';
+          } else {
+            prevEl.textContent = '⚠️ Enter First Slot as HH:MM AM/PM (e.g. 10:30 AM).';
+          }
+        }
+      }
+
+      async function submitManageSession() {
+        const dateText = document.getElementById('manageDate').value.trim();
+        if (!dateText) {
+          showToast('⚠️ Date Header cannot be empty.');
+          return;
+        }
+        const mode = MANAGE_CTX.mode;
+        const groupCap = Math.max(0, Number(document.getElementById('manageGroupCap').value) || 0);
+        const firstSlot = document.getElementById('manageFirstSlot').value.trim();
+        const intervalMins = Math.max(1, Number(document.getElementById('manageIntervalMins').value) || 8);
+        const numSlots = Math.max(1, Number(document.getElementById('manageNumSlots').value) || 12);
+        const slotCap = Math.max(1, Number(document.getElementById('manageSlotCap').value) || 2);
+
+        if (mode === 'group' && groupCap > 0 && groupCap < MANAGE_CTX.minGroupCap) {
+          showToast('⚠️ Cannot set slots below ' + MANAGE_CTX.minGroupCap + ' (already signed up).');
+          return;
+        }
+        if (mode === 'slotted') {
+          if (parseSlotMinsClient(firstSlot) === null) {
+            showToast('⚠️ Please enter a valid First Slot time (e.g. 10:30 AM).');
+            return;
+          }
+          if (numSlots < MANAGE_CTX.minSlots) {
+            showToast('⚠️ Cannot reduce below ' + MANAGE_CTX.minSlots + ' slots (Slot #' + MANAGE_CTX.minSlots + ' has sign-ups).');
+            return;
+          }
+          if (slotCap < MANAGE_CTX.minSlotCap) {
+            showToast('⚠️ Cannot reduce per-slot capacity below ' + MANAGE_CTX.minSlotCap + '.');
+            return;
+          }
+        }
+
+        const btn = document.getElementById('manageSaveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        const payload = {
+          rowNumber: MANAGE_CTX.rowNumber,
+          sessionKey: MANAGE_CTX.sessionKey,
+          dateText: dateText,
+          eventText: document.getElementById('manageEvent').value.trim(),
+          timeText: document.getElementById('manageTime').value.trim(),
+          rsvpText: document.getElementById('manageRsvp').value.trim(),
+          locationText: document.getElementById('manageLocation').value.trim(),
+          coordText: document.getElementById('manageCoord').value.trim(),
+          notesText: document.getElementById('manageNotes').value.trim(),
+          costText: document.getElementById('manageCost').value.trim(),
+          mode: mode,
+          groupCap: groupCap,
+          firstSlot: firstSlot,
+          intervalMins: intervalMins,
+          numSlots: numSlots,
+          slotCap: slotCap,
+          coachEmail: getActiveCoachEmail(),
+          useTestSheet: Boolean(APP_STATE.useTestSheet)
+        };
+
+        try {
+          const newState = await callApi('coachUpdateSession', payload);
+          btn.disabled = false;
+          btn.textContent = 'Save Changes';
+          closeManageModal();
+          APP_STATE = newState;
+          renderAll();
+          showToast('✅ Updated session details & schedule!');
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = 'Save Changes';
+          showToast('❌ Update failed: ' + (err.message || err));
+          refreshSessions();
+        }
+      }
+
+      // Coach Delete / Cancel Session Modal Logic
+      function openDeleteSessionModal() {
+        const session = (APP_STATE.sessions || []).find(s => s.rowNumber === MANAGE_CTX.rowNumber);
+        const label = session
+          ? ((session.dateText || '') + (session.eventText ? ' — ' + session.eventText : ''))
+          : (MANAGE_CTX.sessionKey || 'this session');
+        document.getElementById('deleteSessionModalText').textContent =
+          'Are you sure you want to permanently delete "' + label + '" and all of its sign-ups from the TRAINING SESSIONS sheet?';
+        const btn = document.getElementById('confirmDeleteSessionBtn');
+        btn.disabled = false;
+        btn.textContent = 'Yes, Delete Session';
+        document.getElementById('deleteSessionModalBackdrop').classList.add('open');
+      }
+
+      function closeDeleteSessionModal() {
+        document.getElementById('deleteSessionModalBackdrop').classList.remove('open');
+      }
+
+      async function executeDeleteSession() {
+        const btn = document.getElementById('confirmDeleteSessionBtn');
+        btn.disabled = true;
+        btn.textContent = 'Deleting...';
+
+        const payload = {
+          rowNumber: MANAGE_CTX.rowNumber,
+          sessionKey: MANAGE_CTX.sessionKey,
+          coachEmail: getActiveCoachEmail(),
+          useTestSheet: Boolean(APP_STATE.useTestSheet)
+        };
+
+        try {
+          const newState = await callApi('coachDeleteSession', payload);
+          btn.disabled = false;
+          btn.textContent = 'Yes, Delete Session';
+          closeDeleteSessionModal();
+          closeManageModal();
+          APP_STATE = newState;
+          renderAll();
+          showToast('🗑️ Deleted training session.');
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = 'Yes, Delete Session';
+          closeDeleteSessionModal();
+          showToast('❌ Could not delete session: ' + (err.message || err));
+        }
+      }
+
+      // Strava Tab Helpers
+      function toggleCustomStravaName(val) {
+        const div = document.getElementById('customNameDiv');
+        const customInput = document.getElementById('customNameInput');
+        if (val === '__NEW__') {
+          div.style.display = 'block';
+          customInput.focus();
+        } else {
+          div.style.display = 'none';
+          document.getElementById('stateInput').value = val;
+        }
+      }
+
+      function validateStravaForm() {
+        const selectVal = document.getElementById('nameSelect').value;
+        if (!selectVal) {
+          showToast('⚠️ Please select your name or choose "Not listed"');
+          return false;
+        }
+        let finalName = selectVal;
+        if (selectVal === '__NEW__') {
+          finalName = document.getElementById('customNameInput').value.trim();
+          if (!finalName) {
+            showToast('⚠️ Please type your name');
+            return false;
+          }
+        }
+        document.getElementById('stateInput').value = finalName;
+
+        const clientId = APP_STATE.stravaClientId || document.getElementById('stravaClientIdInput').value || '';
+        const redirectUri = APP_STATE.scriptUrl || SCRIPT_API_URL;
+        const authUrl = "https://www.strava.com/oauth/authorize?client_id=" + encodeURIComponent(clientId) +
+          "&response_type=code" +
+          "&redirect_uri=" + encodeURIComponent(redirectUri) +
+          "&approval_prompt=auto" +
+          "&scope=read,activity:read_all" +
+          "&state=" + encodeURIComponent(finalName);
+
+        window.location.href = authUrl;
+        return false;
+      }
+
+      initApp();
+    </script>
+  </body>
 </html>
