@@ -16,6 +16,8 @@ const SETTINGS = {
   SHEET_TAB: 'Run Accountability!',
   TRAINING_TAB: 'TRAINING SESSIONS',
   TRAINING_TAB_GID: '728305493',
+  RACE_WAVES_TAB: 'Hyrox Anaheim 2026 times',
+  RACE_TRAVEL_TAB: 'Travel ✈️ Hyrox Anaheim 2026!! ',
   TEST_SPREADSHEET_ID: '1KZtKRFMQXrjFlcfSRrViLlp-48SOJIyzenV5ru58Ez4',
   CONFIG_TAB: '_Strava_Athletes_Config',
   STRAVA_AUTH_URL: 'https://www.strava.com/oauth/token',
@@ -62,6 +64,14 @@ function handleApiAction(action, payload) {
       state = coachUpdateTrainingSession(p);
     } else if (action === 'coachDeleteSession') {
       state = coachDeleteTrainingSession(p);
+    } else if (action === 'saveRaceWaveEntry') {
+      state = saveRaceWaveEntry(p);
+    } else if (action === 'deleteRaceWaveEntry') {
+      state = deleteRaceWaveEntry(p);
+    } else if (action === 'saveRaceTravelEntry') {
+      state = saveRaceTravelEntry(p);
+    } else if (action === 'deleteRaceTravelEntry') {
+      state = deleteRaceTravelEntry(p);
     } else if (action === 'verifyCoachEmail') {
       const res = verifyCoachEmail(p.email, useTestSheet);
       return jsonResponse({ ok: true, isCoach: res.isCoach, state: res.state });
@@ -114,8 +124,9 @@ function doGet(e) {
     return handleApiAction(action, payload);
   }
 
-  const initialTab = (params.page || '').toLowerCase() === 'strava' ? 'strava' : (
-    (params.page || '').toLowerCase() === 'training' ? 'training' : 'training'
+  const pageLower = (params.page || params.tab || '').toLowerCase();
+  const initialTab = pageLower === 'strava' ? 'strava' : (
+    (pageLower === 'race' || pageLower === 'waves' || pageLower === 'travel' || pageLower === 'anaheim') ? 'race' : 'training'
   );
   const useTestSheet = params.test === '1' || params.test === 'true';
 
@@ -620,6 +631,97 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
         margin: 24px auto;
         text-align: center;
       }
+      .race-hero {
+        background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+        color: #fff;
+        border-radius: 14px;
+        padding: 16px 18px;
+        margin-bottom: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .race-hero-title { font-size: 18px; font-weight: 800; margin: 0 0 4px 0; }
+      .race-hero-sub { font-size: 13px; color: #d1d5db; margin: 0; }
+      .race-subtabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        background: #e5e7eb;
+        padding: 4px;
+        border-radius: 10px;
+        margin-bottom: 14px;
+      }
+      .race-subtab {
+        border: none;
+        background: transparent;
+        color: #4b5563;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 10px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 42px;
+      }
+      .race-subtab.active { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+      .day-pills { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
+      .day-pill {
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text);
+        padding: 7px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        min-height: 36px;
+      }
+      .day-pill.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+      .race-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+      .race-search-input { flex: 1 1 180px; padding: 9px 12px; min-height: 40px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: #fff; }
+      .race-div-select { flex: 0 1 180px; padding: 9px 10px; min-height: 40px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: #fff; }
+      .race-day-card { background: #fff; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 16px; overflow: hidden; }
+      .race-day-header { padding: 13px 16px; background: linear-gradient(to right, #f9fafb, #fff7ed); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      .race-day-title { font-size: 16px; font-weight: 800; color: var(--navy); margin: 0; }
+      .wave-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 16px; border-bottom: 1px solid #f3f4f6; }
+      .wave-row:last-child { border-bottom: none; }
+      .wave-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+      .wave-time-badge { min-width: 88px; text-align: center; font-size: 13px; font-weight: 800; padding: 6px 10px; border-radius: 8px; background: var(--navy); color: #fff; flex-shrink: 0; cursor: pointer; border: none; }
+      .wave-time-badge.unset { background: #fff7ed; color: var(--brand); border: 1px dashed #fdba74; font-weight: 700; font-size: 12px; }
+      .wave-info { min-width: 0; flex: 1; }
+      .wave-athletes { font-size: 15px; font-weight: 700; color: var(--text); word-break: break-word; }
+      .wave-meta { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+      .div-pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #f3f4f6; color: #374151; }
+      .div-pill.doubles { background: #dbeafe; color: #1d4ed8; }
+      .div-pill.relay { background: #ede9fe; color: #6d28d9; }
+      .div-pill.pro { background: #fef3c7; color: #b45309; }
+      .travel-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px; }
+      .summary-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+      .summary-card h4 { margin: 0 0 10px 0; font-size: 14px; font-weight: 800; color: var(--navy); display: flex; align-items: center; justify-content: space-between; }
+      .dinner-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 7px 0; border-bottom: 1px dashed #e5e7eb; font-size: 13px; }
+      .dinner-row:last-child { border-bottom: none; padding-bottom: 0; }
+      .dinner-day-label { font-weight: 700; color: var(--navy); white-space: nowrap; min-width: 92px; }
+      .dinner-names { color: var(--text); flex: 1; text-align: right; word-break: break-word; }
+      .hotel-group-item { padding: 7px 0; border-bottom: 1px dashed #e5e7eb; font-size: 13px; }
+      .hotel-group-item:last-child { border-bottom: none; padding-bottom: 0; }
+      .travel-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 15px 16px; margin-bottom: 12px; }
+      .travel-card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+      .travel-name { font-size: 16px; font-weight: 800; color: var(--navy); }
+      .travel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; margin-bottom: 10px; }
+      .travel-leg-box { background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+      .travel-leg-label { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center; }
+      .travel-day-tag { background: #ffedd5; color: #c2410c; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+      .dinner-toggle-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+      .dinner-toggle-btn { border: 1px solid #d1d5db; background: #f9fafb; color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 700; cursor: pointer; min-height: 38px; }
+      .dinner-toggle-btn.active { background: #ecfdf5; border-color: var(--green); color: var(--green); }
+      .hotel-chip-btn { border: 1px solid #d1d5db; background: #f9fafb; color: #374151; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
       @media (max-width: 600px) {
         .topbar {
           padding: 10px 12px 0 12px;
@@ -755,8 +857,9 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
           <a id="sheetLink" class="sheet-link" href="#" target="_blank" rel="noopener">📄 View Google Sheet ↗</a>
         </div>
         <div class="nav-tabs">
-          <button id="tabBtnTraining" class="nav-tab" onclick="switchTab('training')">🏋️ Training Sign-Up</button>
-          <button id="tabBtnStrava" class="nav-tab" onclick="switchTab('strava')">🏃 Strava Run Sync</button>
+          <button id="tabBtnTraining" class="nav-tab" onclick="switchTab('training')">🏋️ Training</button>
+          <button id="tabBtnRace" class="nav-tab" onclick="switchTab('race')">🏁 Anaheim 2026</button>
+          <button id="tabBtnStrava" class="nav-tab" onclick="switchTab('strava')">⚡ Strava</button>
         </div>
       </div>
     </div>
@@ -782,6 +885,58 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
         <div id="pastContainer" style="display:none; margin-top: 14px;"></div>
       </div>
     </div>
+
+    <!-- TAB 2: HYROX ANAHEIM 2026 RACE HUB -->
+    <div id="tabRace" class="container" style="display:none;">
+      <div class="race-hero">
+        <div>
+          <h2 class="race-hero-title">🏁 HYROX Anaheim 2026</h2>
+          <p class="race-hero-sub">📅 Thu Dec 3 – Sun Dec 6, 2026 • 📍 Anaheim Convention Center</p>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" style="background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.25);" onclick="refreshSessions()">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <div class="race-subtabs">
+        <button type="button" id="subtabBtnWaves" class="race-subtab active" onclick="switchRaceSubtab('waves')">
+          ⏱️ Start Waves <span id="wavesCountBadge" class="badge badge-open" style="margin-left:2px;">0</span>
+        </button>
+        <button type="button" id="subtabBtnTravel" class="race-subtab" onclick="switchRaceSubtab('travel')">
+          ✈️ Travel &amp; Dinners <span id="travelCountBadge" class="badge badge-slotted" style="margin-left:2px;">0</span>
+        </button>
+      </div>
+
+      <div id="raceWavesView">
+        <div id="raceDayPills" class="day-pills"></div>
+        <div class="race-filter-bar">
+          <input type="text" id="waveSearchInput" class="race-search-input" placeholder="🔍 Search athlete or team..." oninput="renderRaceWaves()">
+          <select id="waveDivFilter" class="race-div-select" onchange="renderRaceWaves()">
+            <option value="ALL">All Divisions</option>
+            <option value="SINGLES">Singles (Open / Pro)</option>
+            <option value="DOUBLES">Doubles</option>
+            <option value="RELAY">Relay Teams</option>
+          </select>
+          <button type="button" class="btn btn-primary btn-sm" onclick="openWaveModal(null, false)">+ Add / Update My Wave</button>
+        </div>
+        <div id="raceWavesContainer"></div>
+      </div>
+
+      <div id="raceTravelView" style="display:none;">
+        <div class="banner-bar">
+          <div style="font-size: 13px; color: var(--muted);">
+            Coordinate flights, carpools, hotels, and group dinners in Anaheim!
+          </div>
+          <div class="banner-actions">
+            <button type="button" class="btn btn-primary btn-sm" onclick="openTravelModal(null)">+ Add / Edit My Travel</button>
+          </div>
+        </div>
+        <div id="raceTravelSummaryContainer" class="travel-summary-grid"></div>
+        <div id="raceTravelCardsContainer"></div>
+      </div>
+    </div>
+
+    <datalist id="clubRosterDatalist"></datalist>
 
     <!-- TAB 2: STRAVA RUN ACCOUNTABILITY -->
     <div id="tabStrava" class="container" style="display:none;">
@@ -1078,6 +1233,201 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
       </div>
     </div>
 
+    <!-- RACE WAVE ADD / EDIT MODAL -->
+    <div id="waveModalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeWaveModal()">
+      <div class="modal" style="max-width: 480px;">
+        <h3 id="waveModalTitle">⏱️ Add / Update Start Wave</h3>
+        <p class="sub">Updates the <b>Hyrox Anaheim 2026 times</b> sheet tab.</p>
+        <div class="field">
+          <label>Select Athlete / Team Entry</label>
+          <select id="waveExistingSelect" onchange="onWaveExistingChange(this.value)"></select>
+        </div>
+        <div class="form-grid-2">
+          <div class="field">
+            <label>Race Day</label>
+            <select id="waveDaySelect">
+              <option value="Thursday">Thursday (12/3)</option>
+              <option value="Friday">Friday (12/4)</option>
+              <option value="Saturday">Saturday (12/5)</option>
+              <option value="Sunday">Sunday (12/6)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Division</label>
+            <select id="waveDivisionSelect" onchange="onWaveDivisionChange()">
+              <option value="Womens Open">Womens Open</option>
+              <option value="Mens Open">Mens Open</option>
+              <option value="Womens Pro">Womens Pro</option>
+              <option value="Mens Pro">Mens Pro</option>
+              <option value="Womens Doubles Open">Womens Doubles Open</option>
+              <option value="Mens Doubles Open">Mens Doubles Open</option>
+              <option value="Mixed Doubles Open">Mixed Doubles Open</option>
+              <option value="Womens Doubles Pro">Womens Doubles Pro</option>
+              <option value="Mens Doubles Pro">Mens Doubles Pro</option>
+              <option value="Mixed Doubles Pro">Mixed Doubles Pro</option>
+              <option value="Womens Relay">Womens Relay</option>
+              <option value="Mens Relay">Mens Relay</option>
+              <option value="Mixed Relay">Mixed Relay</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Start Wave Time</label>
+          <div class="mode-toggle" style="margin-bottom:8px;">
+            <button type="button" id="waveTimeModeSet" class="mode-btn active" onclick="setWaveTimeMode('set')">⏱️ Set Wave Time</button>
+            <button type="button" id="waveTimeModeTbd" class="mode-btn" onclick="setWaveTimeMode('tbd')">⏳ Not Released Yet</button>
+          </div>
+          <div id="waveTimePickerRow" class="form-grid-3">
+            <div>
+              <select id="waveHourSelect" onchange="onWaveHourChange(this.value)">
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10" selected>10</option>
+                <option value="11">11</option>
+                <option value="12">12</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
+            </div>
+            <div>
+              <select id="waveMinSelect">
+                <option value="00">:00</option>
+                <option value="05">:05</option>
+                <option value="10">:10</option>
+                <option value="15">:15</option>
+                <option value="20">:20</option>
+                <option value="25">:25</option>
+                <option value="30">:30</option>
+                <option value="35">:35</option>
+                <option value="40">:40</option>
+                <option value="45">:45</option>
+                <option value="50">:50</option>
+                <option value="55">:55</option>
+              </select>
+            </div>
+            <div>
+              <select id="waveAmPmSelect">
+                <option value="AM" selected>AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label id="wavePrimaryLabel">Athlete Name</label>
+          <input type="text" id="waveNameInput" list="clubRosterDatalist" placeholder="e.g. Steve T">
+        </div>
+        <div id="wavePartner1Field" class="field" style="display:none;">
+          <label id="wavePartner1Label">Doubles / Relay Partner 1</label>
+          <input type="text" id="wavePartner1Input" list="clubRosterDatalist" placeholder="Partner's name...">
+        </div>
+        <div id="waveRelayPartnersField" class="form-grid-2" style="display:none;">
+          <div class="field">
+            <label>Relay Partner 2</label>
+            <input type="text" id="wavePartner2Input" list="clubRosterDatalist" placeholder="Partner 3...">
+          </div>
+          <div class="field">
+            <label>Relay Partner 3</label>
+            <input type="text" id="wavePartner3Input" list="clubRosterDatalist" placeholder="Partner 4...">
+          </div>
+        </div>
+        <div id="waveDeleteWrap" style="display:none; border-top:1px dashed var(--border); padding-top:12px; margin-top:6px;">
+          <button type="button" class="btn btn-outline btn-sm" style="color:var(--danger); border-color:#fecaca; width:100%;" onclick="openDeleteWaveModal()">
+            🗑️ Delete This Race Entry
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeWaveModal()">Cancel</button>
+          <button type="button" id="waveSaveBtn" class="btn btn-primary" onclick="submitWaveModal()">Save Wave</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="deleteWaveModalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeDeleteWaveModal()">
+      <div class="modal" style="max-width: 390px;">
+        <h3>🗑️ Delete Race Entry?</h3>
+        <p id="deleteWaveModalText" class="sub" style="font-size: 14px; color: var(--text); margin: 10px 0 18px 0;"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeDeleteWaveModal()">Keep Entry</button>
+          <button type="button" id="confirmDeleteWaveBtn" class="btn btn-danger" onclick="executeDeleteWave()">Yes, Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRAVEL, HOTEL & DINNERS ADD / EDIT MODAL -->
+    <div id="travelModalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeTravelModal()">
+      <div class="modal" style="max-width: 500px;">
+        <h3 id="travelModalTitle">✈️ Add / Edit Travel &amp; Dinners</h3>
+        <p class="sub">Updates the <b>Travel ✈️ Hyrox Anaheim 2026!!</b> sheet tab.</p>
+        <div class="field">
+          <label>Select Entry</label>
+          <select id="travelExistingSelect" onchange="onTravelExistingChange(this.value)"></select>
+        </div>
+        <div class="field">
+          <label>Name(s) (e.g. "Steve T" or "Jade &amp; Aaron")</label>
+          <input type="text" id="travelNameInput" list="clubRosterDatalist" placeholder="Your name(s)...">
+        </div>
+        <div style="background:#f9fafb; border:1px solid var(--border); padding:12px; border-radius:10px; margin-bottom:14px;">
+          <div class="field" style="margin-bottom:8px;">
+            <label>🛫 Outbound to Anaheim — Day</label>
+            <select id="travelOutboundDaySelect"></select>
+          </div>
+          <div class="field" style="margin:0;">
+            <label>Outbound Flight / Driving / Carpool Info</label>
+            <textarea id="travelOutboundDetails" rows="2" placeholder="e.g. Southwest SJC to LGB @ 12:55pm, or Driving w/ room for 2"></textarea>
+          </div>
+        </div>
+        <div style="background:#f9fafb; border:1px solid var(--border); padding:12px; border-radius:10px; margin-bottom:14px;">
+          <div class="field" style="margin-bottom:8px;">
+            <label>🛬 Return Home — Day</label>
+            <select id="travelReturnDaySelect"></select>
+          </div>
+          <div class="field" style="margin:0;">
+            <label>Return Flight / Driving Info</label>
+            <textarea id="travelReturnDetails" rows="2" placeholder="e.g. Southwest LGB to SJC @ 5:45pm, or Driving Sunday morning"></textarea>
+          </div>
+        </div>
+        <div class="field">
+          <label>🏨 Hotel / Lodging</label>
+          <input type="text" id="travelLodgingInput" placeholder="e.g. BW Lulu Anaheim, Hilton Anaheim, Sheraton...">
+          <div id="travelHotelChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;"></div>
+        </div>
+        <div class="field">
+          <label>🍽️ Interested in Group Dinner (tap all that apply)</label>
+          <div id="travelDinnerToggles" class="dinner-toggle-grid"></div>
+        </div>
+        <div class="field">
+          <label>🎡 Other Plans (Disneyland, Rooftop Drinks, etc.)</label>
+          <input type="text" id="travelOtherPlansInput" placeholder="Optional plans to share with the group...">
+        </div>
+        <div id="travelDeleteWrap" style="display:none; border-top:1px dashed var(--border); padding-top:12px; margin-top:6px;">
+          <button type="button" class="btn btn-outline btn-sm" style="color:var(--danger); border-color:#fecaca; width:100%;" onclick="openDeleteTravelModal()">
+            🗑️ Delete Travel Entry
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeTravelModal()">Cancel</button>
+          <button type="button" id="travelSaveBtn" class="btn btn-primary" onclick="submitTravelModal()">Save Travel Info</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="deleteTravelModalBackdrop" class="modal-backdrop" onclick="if(event.target===this) closeDeleteTravelModal()">
+      <div class="modal" style="max-width: 390px;">
+        <h3>🗑️ Delete Travel Entry?</h3>
+        <p id="deleteTravelModalText" class="sub" style="font-size: 14px; color: var(--text); margin: 10px 0 18px 0;"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeDeleteTravelModal()">Keep Entry</button>
+          <button type="button" id="confirmDeleteTravelBtn" class="btn btn-danger" onclick="executeDeleteTravel()">Yes, Delete</button>
+        </div>
+      </div>
+    </div>
+
     <div id="toast" class="toast"></div>
 
     <script>
@@ -1116,15 +1466,18 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
 
       function initApp() {
         switchTab(ACTIVE_TAB);
+        switchRaceSubtab(RACE_SUBTAB);
         renderAll();
       }
 
       function switchTab(tab) {
-        ACTIVE_TAB = tab;
-        document.getElementById('tabTraining').style.display = tab === 'training' ? 'block' : 'none';
-        document.getElementById('tabStrava').style.display = tab === 'strava' ? 'block' : 'none';
-        document.getElementById('tabBtnTraining').classList.toggle('active', tab === 'training');
-        document.getElementById('tabBtnStrava').classList.toggle('active', tab === 'strava');
+        ACTIVE_TAB = tab === 'strava' ? 'strava' : (tab === 'race' ? 'race' : 'training');
+        document.getElementById('tabTraining').style.display = ACTIVE_TAB === 'training' ? 'block' : 'none';
+        document.getElementById('tabRace').style.display = ACTIVE_TAB === 'race' ? 'block' : 'none';
+        document.getElementById('tabStrava').style.display = ACTIVE_TAB === 'strava' ? 'block' : 'none';
+        document.getElementById('tabBtnTraining').classList.toggle('active', ACTIVE_TAB === 'training');
+        document.getElementById('tabBtnRace').classList.toggle('active', ACTIVE_TAB === 'race');
+        document.getElementById('tabBtnStrava').classList.toggle('active', ACTIVE_TAB === 'strava');
       }
 
       function showToast(msg) {
@@ -1149,6 +1502,8 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
         badge.style.display = APP_STATE.useTestSheet ? 'inline-block' : 'none';
         const link = document.getElementById('sheetLink');
         if (APP_STATE.spreadsheetUrl) link.href = APP_STATE.spreadsheetUrl;
+
+        renderRaceHub();
 
         const upcomingEl = document.getElementById('upcomingContainer');
         const pastEl = document.getElementById('pastContainer');
@@ -2011,6 +2366,807 @@ function renderUnifiedWebApp(initialTab, useTestSheet) {
           window.open(authUrl, '_top');
           return false;
         }
+      }
+
+      // HYROX ANAHEIM 2026 RACE HUB LOGIC
+      let RACE_SUBTAB = 'waves';
+      let RACE_DAY_FILTER = 'ALL';
+
+      const DAY_META = {
+        'Thursday': { short: 'Thu 12/3', full: 'Thursday, Dec 3' },
+        'Friday': { short: 'Fri 12/4', full: 'Friday, Dec 4' },
+        'Saturday': { short: 'Sat 12/5', full: 'Saturday, Dec 5' },
+        'Sunday': { short: 'Sun 12/6', full: 'Sunday, Dec 6' }
+      };
+
+      const DINNER_SHORT_LABELS = {
+        'Thurs Dinner': '🍽️ Thu 12/3',
+        'Friday Dinner': '🍽️ Fri 12/4',
+        'Saturday Dinner': '🍽️ Sat 12/5',
+        'Sunday Dinner': '🍽️ Sun 12/6',
+        'Monday Dinner': '🍽️ Mon 12/7'
+      };
+
+      const DEFAULT_HOTEL_CHIPS = [
+        'BW Lulu Anaheim',
+        'Hilton Anaheim',
+        'Sheraton Anaheim',
+        'Residence Inn Anaheim',
+        "King's Inn Anaheim",
+        'Westin Anaheim'
+      ];
+
+      let WAVE_MODAL_CTX = {
+        rowNumber: null,
+        originalName: '',
+        originalDay: '',
+        timeMode: 'set'
+      };
+
+      let TRAVEL_MODAL_CTX = {
+        rowNumber: null,
+        originalName: '',
+        dinners: []
+      };
+
+      function switchRaceSubtab(subtab) {
+        RACE_SUBTAB = subtab === 'travel' ? 'travel' : 'waves';
+        const btnWaves = document.getElementById('subtabBtnWaves');
+        const btnTravel = document.getElementById('subtabBtnTravel');
+        const viewWaves = document.getElementById('raceWavesView');
+        const viewTravel = document.getElementById('raceTravelView');
+        if (btnWaves) btnWaves.classList.toggle('active', RACE_SUBTAB === 'waves');
+        if (btnTravel) btnTravel.classList.toggle('active', RACE_SUBTAB === 'travel');
+        if (viewWaves) viewWaves.style.display = RACE_SUBTAB === 'waves' ? 'block' : 'none';
+        if (viewTravel) viewTravel.style.display = RACE_SUBTAB === 'travel' ? 'block' : 'none';
+      }
+
+      function setRaceDayFilter(day) {
+        RACE_DAY_FILTER = day || 'ALL';
+        renderRaceWaves();
+      }
+
+      function populateClubDatalist() {
+        const dl = document.getElementById('clubRosterDatalist');
+        if (!dl) return;
+        const nameSet = new Set(APP_STATE.roster || []);
+        const waves = (APP_STATE.raceWaves && APP_STATE.raceWaves.entries) || [];
+        waves.forEach(w => {
+          if (w.name) nameSet.add(w.name);
+          if (w.partner1) nameSet.add(w.partner1);
+          if (w.partner2) nameSet.add(w.partner2);
+          if (w.partner3) nameSet.add(w.partner3);
+        });
+        const sorted = Array.from(nameSet).sort((a, b) => a.localeCompare(b));
+        dl.innerHTML = sorted.map(n => '<option value="' + escapeHtmlClient(n) + '"></option>').join('');
+      }
+
+      function renderRaceHub() {
+        populateClubDatalist();
+        const waveEntries = (APP_STATE.raceWaves && APP_STATE.raceWaves.entries) || [];
+        const travelEntries = (APP_STATE.raceTravel && APP_STATE.raceTravel.entries) || [];
+
+        const wavesBadge = document.getElementById('wavesCountBadge');
+        if (wavesBadge) wavesBadge.textContent = String(waveEntries.length);
+
+        const travelBadge = document.getElementById('travelCountBadge');
+        if (travelBadge) travelBadge.textContent = String(travelEntries.length);
+
+        renderRaceWaves();
+        renderRaceTravel();
+      }
+
+      function formatWaveAthletesDisplay(entry) {
+        const parts = [entry.name, entry.partner1, entry.partner2, entry.partner3].map(s => String(s || '').trim()).filter(Boolean);
+        if (parts.length === 0) return 'TBD';
+        if (parts.length === 1) return escapeHtmlClient(parts[0]);
+        if (parts.length === 2) return escapeHtmlClient(parts[0]) + ' <span style="color:var(--brand); font-weight:800;">&amp;</span> ' + escapeHtmlClient(parts[1]);
+        return parts.map(p => escapeHtmlClient(p)).join(', ');
+      }
+
+      function getDivisionPillClass(div) {
+        const d = String(div || '').toLowerCase();
+        if (d.includes('relay')) return 'div-pill relay';
+        if (d.includes('pro')) return 'div-pill pro';
+        if (d.includes('doubles')) return 'div-pill doubles';
+        return 'div-pill';
+      }
+
+      function renderRaceWaves() {
+        const pillsEl = document.getElementById('raceDayPills');
+        const listEl = document.getElementById('raceWavesContainer');
+        if (!pillsEl || !listEl) return;
+
+        const waveData = APP_STATE.raceWaves || { entries: [], days: ['Thursday', 'Friday', 'Saturday', 'Sunday'] };
+        const entries = waveData.entries || [];
+        const days = waveData.days || ['Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+        const countsByDay = { ALL: entries.length };
+        days.forEach(d => { countsByDay[d] = 0; });
+        entries.forEach(e => {
+          const d = e.day || 'Thursday';
+          countsByDay[d] = (countsByDay[d] || 0) + 1;
+        });
+
+        let pillsHtml = '<button type="button" class="day-pill ' + (RACE_DAY_FILTER === 'ALL' ? 'active' : '') +
+          '" onclick="setRaceDayFilter(\\'ALL\\')">All Days (' + countsByDay.ALL + ')</button>';
+        days.forEach(d => {
+          const meta = DAY_META[d] || { short: d, full: d };
+          const cnt = countsByDay[d] || 0;
+          pillsHtml += '<button type="button" class="day-pill ' + (RACE_DAY_FILTER === d ? 'active' : '') +
+            '" onclick="setRaceDayFilter(\\'' + escapeHtmlClient(d) + '\\')">' +
+            escapeHtmlClient(meta.short) + ' (' + cnt + ')</button>';
+        });
+        pillsEl.innerHTML = pillsHtml;
+
+        const searchEl = document.getElementById('waveSearchInput');
+        const query = searchEl ? String(searchEl.value || '').trim().toLowerCase() : '';
+        const divFilterEl = document.getElementById('waveDivFilter');
+        const divFilter = divFilterEl ? divFilterEl.value : 'ALL';
+
+        const filtered = entries.filter(e => {
+          if (RACE_DAY_FILTER !== 'ALL' && e.day !== RACE_DAY_FILTER) return false;
+          if (divFilter === 'DOUBLES' && !/doubles/i.test(e.division) && (!e.partner1 || e.partner2)) return false;
+          if (divFilter === 'RELAY' && !/relay/i.test(e.division) && !e.partner2) return false;
+          if (divFilter === 'SINGLES' && (/doubles|relay/i.test(e.division) || e.partner1)) return false;
+          if (query) {
+            const hay = [e.name, e.partner1, e.partner2, e.partner3, e.division, e.startWave, e.day].join(' ').toLowerCase();
+            if (!hay.includes(query)) return false;
+          }
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          listEl.innerHTML = '<div class="session-card"><div class="session-body" style="text-align:center; color:#6b7280; padding:28px;">No matching race wave entries found.</div></div>';
+          return;
+        }
+
+        const activeDays = RACE_DAY_FILTER === 'ALL' ? days : [RACE_DAY_FILTER];
+        let html = '';
+
+        activeDays.forEach(d => {
+          const dayEntries = filtered.filter(e => e.day === d);
+          if (dayEntries.length === 0) return;
+
+          const sorted = dayEntries.slice().sort((a, b) => {
+            const ma = typeof a.startMins === 'number' ? a.startMins : 9999;
+            const mb = typeof b.startMins === 'number' ? b.startMins : 9999;
+            if (ma !== mb) return ma - mb;
+            return (a.rowNumber || 0) - (b.rowNumber || 0);
+          });
+
+          const meta = DAY_META[d] || { short: d, full: d };
+          const withTimeCount = sorted.filter(e => Boolean(e.startWave)).length;
+
+          html += '<div class="race-day-card">';
+          html += '<div class="race-day-header">';
+          html += '<h3 class="race-day-title">📅 ' + escapeHtmlClient(meta.full) + '</h3>';
+          html += '<span class="badge badge-slotted">' + sorted.length + (sorted.length === 1 ? ' entry' : ' entries') +
+            (withTimeCount > 0 ? ' • ' + withTimeCount + ' w/ wave time' : '') + '</span>';
+          html += '</div>';
+          html += '<div class="wave-list">';
+
+          sorted.forEach(e => {
+            const hasWave = Boolean(e.startWave);
+            const timeBtnHtml = hasWave
+              ? '<button type="button" class="wave-time-badge" title="Update wave time" onclick="openWaveModal(' + e.rowNumber + ', true)">⏱️ ' + escapeHtmlClient(e.startWave) + '</button>'
+              : '<button type="button" class="wave-time-badge unset" title="Add start wave time" onclick="openWaveModal(' + e.rowNumber + ', true)">+ Wave Time</button>';
+
+            html += '<div class="wave-row">';
+            html += '<div class="wave-left">';
+            html += timeBtnHtml;
+            html += '<div class="wave-info">';
+            html += '<div class="wave-athletes">' + formatWaveAthletesDisplay(e) + '</div>';
+            html += '<div class="wave-meta"><span class="' + getDivisionPillClass(e.division) + '">' + escapeHtmlClient(e.division || 'Open') + '</span></div>';
+            html += '</div>';
+            html += '</div>';
+            html += '<button type="button" class="btn btn-outline btn-sm" onclick="openWaveModal(' + e.rowNumber + ', false)">✏️ Edit</button>';
+            html += '</div>';
+          });
+
+          html += '</div></div>';
+        });
+
+        listEl.innerHTML = html;
+      }
+
+      function parseHotelDisplayAndUrl(rawLodging) {
+        const str = String(rawLodging || '').trim();
+        if (!str) return { name: '', url: '' };
+        const urlMatch = str.match(/https?:\\/\\/\\S+/i);
+        const url = urlMatch ? urlMatch[0] : '';
+        const cleanName = str.replace(/https?:\\/\\/\\S+/gi, '').replace(/\\s+/g, ' ').trim();
+        return {
+          name: cleanName || (url ? 'Hotel Link' : ''),
+          url: url
+        };
+      }
+
+      function renderRaceTravel() {
+        const summaryEl = document.getElementById('raceTravelSummaryContainer');
+        const cardsEl = document.getElementById('raceTravelCardsContainer');
+        if (!summaryEl || !cardsEl) return;
+
+        const travelData = APP_STATE.raceTravel || {
+          entries: [],
+          outboundDays: ['Wednesday 12/2', 'Thursday 12/3', 'Friday 12/4', 'Saturday 12/5', 'Sunday 12/6'],
+          returnDays: ['Thursday 12/3', 'Friday 12/4', 'Saturday 12/5', 'Sunday 12/6', 'Monday 12/7'],
+          dinnerLabels: ['Thurs Dinner', 'Friday Dinner', 'Saturday Dinner', 'Sunday Dinner', 'Monday Dinner']
+        };
+        const entries = travelData.entries || [];
+        const dinnerLabels = travelData.dinnerLabels || ['Thurs Dinner', 'Friday Dinner', 'Saturday Dinner', 'Sunday Dinner', 'Monday Dinner'];
+
+        let dinnerHtml = '<div class="summary-card"><h4><span>🍽️ Group Dinner Interest</span><span class="badge badge-open">Dec 3–7</span></h4>';
+        dinnerLabels.forEach(dl => {
+          const interested = entries.filter(e => (e.dinners || []).some(d => d.toLowerCase() === dl.toLowerCase())).map(e => e.name);
+          const shortLabel = DINNER_SHORT_LABELS[dl] || dl;
+          dinnerHtml += '<div class="dinner-row">';
+          dinnerHtml += '<div class="dinner-day-label">' + escapeHtmlClient(shortLabel) + ' <span class="badge ' + (interested.length > 0 ? 'badge-open' : '') + '" style="margin-left:4px;">' + interested.length + '</span></div>';
+          dinnerHtml += '<div class="dinner-names">' + (interested.length > 0 ? interested.map(n => escapeHtmlClient(n)).join(', ') : '<span style="color:#9ca3af; font-style:italic;">No RSVPs yet</span>') + '</div>';
+          dinnerHtml += '</div>';
+        });
+        dinnerHtml += '</div>';
+
+        const hotelMap = {};
+        entries.forEach(e => {
+          const parsed = parseHotelDisplayAndUrl(e.lodging);
+          if (!parsed.name || parsed.name.toLowerCase() === 'n/a') return;
+          const key = parsed.name.toLowerCase();
+          if (!hotelMap[key]) {
+            hotelMap[key] = { name: parsed.name, url: parsed.url, guests: [] };
+          } else if (!hotelMap[key].url && parsed.url) {
+            hotelMap[key].url = parsed.url;
+          }
+          hotelMap[key].guests.push(e.name);
+        });
+        const hotelGroups = Object.values(hotelMap);
+
+        let hotelHtml = '<div class="summary-card"><h4><span>🏨 Where People Are Staying</span><span class="badge badge-slotted">' + hotelGroups.length + (hotelGroups.length === 1 ? ' hotel' : ' hotels') + '</span></h4>';
+        if (hotelGroups.length === 0) {
+          hotelHtml += '<div style="font-size:13px; color:#9ca3af; font-style:italic; padding:8px 0;">No hotels listed yet. Add yours so others can book nearby!</div>';
+        } else {
+          hotelGroups.forEach(hg => {
+            hotelHtml += '<div class="hotel-group-item">';
+            hotelHtml += '<div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">';
+            hotelHtml += '<strong style="color:var(--navy);">' + escapeHtmlClient(hg.name) + '</strong>';
+            if (hg.url) {
+              hotelHtml += '<a href="' + escapeHtmlClient(hg.url) + '" target="_blank" rel="noopener" style="font-size:12px; color:var(--brand); font-weight:700; text-decoration:none;">📍 Map ↗</a>';
+            }
+            hotelHtml += '</div>';
+            hotelHtml += '<div style="color:var(--muted); margin-top:2px;">👥 ' + hg.guests.map(g => escapeHtmlClient(g)).join(', ') + '</div>';
+            hotelHtml += '</div>';
+          });
+        }
+        hotelHtml += '</div>';
+
+        summaryEl.innerHTML = dinnerHtml + hotelHtml;
+
+        if (entries.length === 0) {
+          cardsEl.innerHTML = '<div class="session-card"><div class="session-body" style="text-align:center; color:#6b7280; padding:28px;">No travel plans added yet. Tap <b>+ Add / Edit My Travel</b> to share yours!</div></div>';
+          return;
+        }
+
+        let cardsHtml = '';
+        entries.forEach(e => {
+          const outList = e.outbound || [];
+          const retList = e.returnTrip || [];
+          const hotelParsed = parseHotelDisplayAndUrl(e.lodging);
+          const dinners = e.dinners || [];
+
+          cardsHtml += '<div class="travel-card">';
+          cardsHtml += '<div class="travel-card-top">';
+          cardsHtml += '<div class="travel-name">🧳 ' + escapeHtmlClient(e.name) + '</div>';
+          cardsHtml += '<button type="button" class="btn btn-outline btn-sm" onclick="openTravelModal(' + e.rowNumber + ')">✏️ Edit</button>';
+          cardsHtml += '</div>';
+
+          cardsHtml += '<div class="travel-grid">';
+          cardsHtml += '<div class="travel-leg-box">';
+          cardsHtml += '<div class="travel-leg-label"><span>🛫 Outbound to Anaheim</span>' +
+            (e.outboundDay ? '<span class="travel-day-tag">' + escapeHtmlClient(e.outboundDay) + '</span>' : '') + '</div>';
+          if (outList.length > 0) {
+            cardsHtml += '<div style="white-space:pre-wrap; word-break:break-word; color:var(--text);">' +
+              outList.map(o => (outList.length > 1 ? '<b>' + escapeHtmlClient(o.day) + ':</b> ' : '') + escapeHtmlClient(o.details)).join('\\n') + '</div>';
+          } else {
+            cardsHtml += '<div style="color:#9ca3af; font-style:italic;">Not set yet</div>';
+          }
+          cardsHtml += '</div>';
+
+          cardsHtml += '<div class="travel-leg-box">';
+          cardsHtml += '<div class="travel-leg-label"><span>🛬 Return Home</span>' +
+            (e.returnDay ? '<span class="travel-day-tag">' + escapeHtmlClient(e.returnDay) + '</span>' : '') + '</div>';
+          if (retList.length > 0) {
+            cardsHtml += '<div style="white-space:pre-wrap; word-break:break-word; color:var(--text);">' +
+              retList.map(r => (retList.length > 1 ? '<b>' + escapeHtmlClient(r.day) + ':</b> ' : '') + escapeHtmlClient(r.details)).join('\\n') + '</div>';
+          } else {
+            cardsHtml += '<div style="color:#9ca3af; font-style:italic;">Not set yet</div>';
+          }
+          cardsHtml += '</div>';
+          cardsHtml += '</div>';
+
+          cardsHtml += '<div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">';
+          if (hotelParsed.name) {
+            cardsHtml += '<div>🏨 <strong>Hotel:</strong> ' + escapeHtmlClient(hotelParsed.name) +
+              (hotelParsed.url ? ' <a href="' + escapeHtmlClient(hotelParsed.url) + '" target="_blank" rel="noopener" style="color:var(--brand); font-weight:700; text-decoration:none; margin-left:4px;">📍 Map ↗</a>' : '') +
+              '</div>';
+          }
+          if (dinners.length > 0) {
+            cardsHtml += '<div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;"><span>🍽️ <strong>Dinners:</strong></span>' +
+              dinners.map(d => '<span class="badge badge-open">' + escapeHtmlClient(DINNER_SHORT_LABELS[d] || d) + '</span>').join('') +
+              '</div>';
+          }
+          if (e.otherPlans) {
+            cardsHtml += '<div>🎡 <strong>Other Plans:</strong> ' + escapeHtmlClient(e.otherPlans) + '</div>';
+          }
+          cardsHtml += '</div>';
+          cardsHtml += '</div>';
+        });
+
+        cardsEl.innerHTML = cardsHtml;
+      }
+
+      function populateWaveExistingDropdown(selectedRowNum) {
+        const sel = document.getElementById('waveExistingSelect');
+        if (!sel) return;
+        const entries = (APP_STATE.raceWaves && APP_STATE.raceWaves.entries) || [];
+        let html = '<option value="NEW"' + (!selectedRowNum ? ' selected' : '') + '>➕ Add a New Race Entry</option>';
+        entries.forEach(e => {
+          const teamStr = [e.name, e.partner1, e.partner2, e.partner3].filter(Boolean).join(' & ');
+          const label = teamStr + ' — ' + (e.day || '') + ' (' + (e.division || 'Open') + (e.startWave ? ', ' + e.startWave : '') + ')';
+          const isSel = Number(selectedRowNum) === Number(e.rowNumber) ? ' selected' : '';
+          html += '<option value="' + e.rowNumber + '"' + isSel + '>' + escapeHtmlClient(label) + '</option>';
+        });
+        sel.innerHTML = html;
+      }
+
+      function setWaveTimeMode(mode) {
+        WAVE_MODAL_CTX.timeMode = mode === 'tbd' ? 'tbd' : 'set';
+        document.getElementById('waveTimeModeSet').classList.toggle('active', WAVE_MODAL_CTX.timeMode === 'set');
+        document.getElementById('waveTimeModeTbd').classList.toggle('active', WAVE_MODAL_CTX.timeMode === 'tbd');
+        document.getElementById('waveTimePickerRow').style.display = WAVE_MODAL_CTX.timeMode === 'set' ? 'grid' : 'none';
+      }
+
+      function onWaveHourChange(hourVal) {
+        const h = parseInt(hourVal, 10);
+        const ampmSel = document.getElementById('waveAmPmSelect');
+        if (!ampmSel || isNaN(h)) return;
+        if (h >= 7 && h <= 11) {
+          ampmSel.value = 'AM';
+        } else {
+          ampmSel.value = 'PM';
+        }
+      }
+
+      function applyTimeToWavePickers(startWaveStr) {
+        const str = String(startWaveStr || '').trim();
+        if (!str) {
+          setWaveTimeMode('tbd');
+          document.getElementById('waveHourSelect').value = '10';
+          document.getElementById('waveMinSelect').value = '00';
+          document.getElementById('waveAmPmSelect').value = 'AM';
+          return;
+        }
+        setWaveTimeMode('set');
+        const m = str.match(/^(\\d{1,2}):(\\d{2})\\s*(AM|PM)?$/i);
+        if (m) {
+          const h = String(parseInt(m[1], 10));
+          const min = m[2];
+          const mer = (m[3] || 'AM').toUpperCase();
+          document.getElementById('waveHourSelect').value = h;
+          document.getElementById('waveMinSelect').value = min;
+          document.getElementById('waveAmPmSelect').value = mer;
+        }
+      }
+
+      function onWaveDivisionChange() {
+        const div = String(document.getElementById('waveDivisionSelect').value || '');
+        const isRelay = /relay/i.test(div);
+        const isDoubles = /doubles/i.test(div);
+        const hasP1 = Boolean(document.getElementById('wavePartner1Input').value.trim());
+        const hasP2P3 = Boolean(document.getElementById('wavePartner2Input').value.trim() || document.getElementById('wavePartner3Input').value.trim());
+
+        document.getElementById('wavePrimaryLabel').textContent = isRelay ? 'Relay Athlete 1' : (isDoubles ? 'Athlete 1' : 'Athlete Name');
+        document.getElementById('wavePartner1Label').textContent = isRelay ? 'Relay Partner 1 (Athlete 2)' : 'Doubles Partner';
+        document.getElementById('wavePartner1Field').style.display = (isDoubles || isRelay || hasP1) ? 'block' : 'none';
+        document.getElementById('waveRelayPartnersField').style.display = (isRelay || hasP2P3) ? 'grid' : 'none';
+      }
+
+      function loadWaveEntryIntoModal(rowNumber, forceSetTimeMode) {
+        const entries = (APP_STATE.raceWaves && APP_STATE.raceWaves.entries) || [];
+        const entry = entries.find(e => Number(e.rowNumber) === Number(rowNumber));
+
+        if (!entry) {
+          WAVE_MODAL_CTX.rowNumber = null;
+          WAVE_MODAL_CTX.originalName = '';
+          WAVE_MODAL_CTX.originalDay = '';
+          document.getElementById('waveModalTitle').textContent = '⏱️ Add New Race Entry';
+          document.getElementById('waveDaySelect').value = (RACE_DAY_FILTER !== 'ALL' ? RACE_DAY_FILTER : 'Thursday');
+          document.getElementById('waveDivisionSelect').value = 'Womens Open';
+          document.getElementById('waveNameInput').value = '';
+          document.getElementById('wavePartner1Input').value = '';
+          document.getElementById('wavePartner2Input').value = '';
+          document.getElementById('wavePartner3Input').value = '';
+          setWaveTimeMode('tbd');
+          onWaveDivisionChange();
+          document.getElementById('waveDeleteWrap').style.display = 'none';
+          return;
+        }
+
+        WAVE_MODAL_CTX.rowNumber = entry.rowNumber;
+        WAVE_MODAL_CTX.originalName = entry.name || '';
+        WAVE_MODAL_CTX.originalDay = entry.day || 'Thursday';
+
+        document.getElementById('waveModalTitle').textContent = '⏱️ Edit Start Wave — ' + (entry.name || '');
+        document.getElementById('waveDaySelect').value = entry.day || 'Thursday';
+        document.getElementById('waveDivisionSelect').value = entry.division || 'Womens Open';
+        document.getElementById('waveNameInput').value = entry.name || '';
+        document.getElementById('wavePartner1Input').value = entry.partner1 || '';
+        document.getElementById('wavePartner2Input').value = entry.partner2 || '';
+        document.getElementById('wavePartner3Input').value = entry.partner3 || '';
+
+        applyTimeToWavePickers(entry.startWave);
+        if (forceSetTimeMode && !entry.startWave) {
+          setWaveTimeMode('set');
+        }
+        onWaveDivisionChange();
+        document.getElementById('waveDeleteWrap').style.display = 'block';
+      }
+
+      function onWaveExistingChange(val) {
+        if (val === 'NEW' || !val) {
+          loadWaveEntryIntoModal(null, false);
+        } else {
+          loadWaveEntryIntoModal(Number(val), false);
+        }
+      }
+
+      function openWaveModal(rowNumber, focusTimePicker) {
+        populateClubDatalist();
+        populateWaveExistingDropdown(rowNumber);
+        loadWaveEntryIntoModal(rowNumber, Boolean(focusTimePicker));
+        document.getElementById('waveModalBackdrop').classList.add('open');
+      }
+
+      function closeWaveModal() {
+        document.getElementById('waveModalBackdrop').classList.remove('open');
+      }
+
+      function submitWaveModal() {
+        const name = document.getElementById('waveNameInput').value.trim();
+        if (!name) {
+          showToast('⚠️ Please enter the primary athlete name.');
+          return;
+        }
+        const day = document.getElementById('waveDaySelect').value;
+        const division = document.getElementById('waveDivisionSelect').value;
+        const isRelay = /relay/i.test(division);
+        const isDoubles = /doubles/i.test(division);
+
+        let startWave = '';
+        if (WAVE_MODAL_CTX.timeMode === 'set') {
+          const h = document.getElementById('waveHourSelect').value;
+          const m = document.getElementById('waveMinSelect').value;
+          const ampm = document.getElementById('waveAmPmSelect').value;
+          startWave = h + ':' + m + ' ' + ampm;
+        }
+
+        const partner1 = (isDoubles || isRelay || document.getElementById('wavePartner1Field').style.display !== 'none')
+          ? document.getElementById('wavePartner1Input').value.trim()
+          : '';
+        const partner2 = (isRelay || document.getElementById('waveRelayPartnersField').style.display !== 'none')
+          ? document.getElementById('wavePartner2Input').value.trim()
+          : '';
+        const partner3 = (isRelay || document.getElementById('waveRelayPartnersField').style.display !== 'none')
+          ? document.getElementById('wavePartner3Input').value.trim()
+          : '';
+
+        const btn = document.getElementById('waveSaveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        const payload = {
+          rowNumber: WAVE_MODAL_CTX.rowNumber,
+          originalName: WAVE_MODAL_CTX.originalName,
+          originalDay: WAVE_MODAL_CTX.originalDay,
+          day: day,
+          startWave: startWave,
+          division: division,
+          name: name,
+          partner1: partner1,
+          partner2: partner2,
+          partner3: partner3,
+          coachEmail: getActiveCoachEmail(),
+          useTestSheet: Boolean(APP_STATE.useTestSheet)
+        };
+
+        google.script.run
+          .withSuccessHandler(newState => {
+            btn.disabled = false;
+            btn.textContent = 'Save Wave';
+            closeWaveModal();
+            APP_STATE = newState;
+            renderAll();
+            showToast('✅ Saved race wave for ' + name + (startWave ? ' (' + startWave + ')' : ''));
+          })
+          .withFailureHandler(err => {
+            btn.disabled = false;
+            btn.textContent = 'Save Wave';
+            showToast('❌ Could not save wave: ' + (err.message || err));
+          })
+          .saveRaceWaveEntry(payload);
+      }
+
+      function openDeleteWaveModal() {
+        if (!WAVE_MODAL_CTX.rowNumber) return;
+        document.getElementById('deleteWaveModalText').textContent =
+          'Remove "' + (WAVE_MODAL_CTX.originalName || 'this entry') + '" from the Hyrox Anaheim 2026 times sheet?';
+        const btn = document.getElementById('confirmDeleteWaveBtn');
+        btn.disabled = false;
+        btn.textContent = 'Yes, Delete';
+        document.getElementById('deleteWaveModalBackdrop').classList.add('open');
+      }
+
+      function closeDeleteWaveModal() {
+        document.getElementById('deleteWaveModalBackdrop').classList.remove('open');
+      }
+
+      function executeDeleteWave() {
+        if (!WAVE_MODAL_CTX.rowNumber) return;
+        const btn = document.getElementById('confirmDeleteWaveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Deleting...';
+
+        const payload = {
+          rowNumber: WAVE_MODAL_CTX.rowNumber,
+          name: WAVE_MODAL_CTX.originalName,
+          day: WAVE_MODAL_CTX.originalDay,
+          coachEmail: getActiveCoachEmail(),
+          useTestSheet: Boolean(APP_STATE.useTestSheet)
+        };
+
+        google.script.run
+          .withSuccessHandler(newState => {
+            btn.disabled = false;
+            btn.textContent = 'Yes, Delete';
+            closeDeleteWaveModal();
+            closeWaveModal();
+            APP_STATE = newState;
+            renderAll();
+            showToast('🗑️ Deleted race entry.');
+          })
+          .withFailureHandler(err => {
+            btn.disabled = false;
+            btn.textContent = 'Yes, Delete';
+            closeDeleteWaveModal();
+            showToast('❌ Could not delete entry: ' + (err.message || err));
+          })
+          .deleteRaceWaveEntry(payload);
+      }
+
+      function populateTravelModalControls(selectedRowNum) {
+        const travelData = APP_STATE.raceTravel || {
+          entries: [],
+          outboundDays: ['Wednesday 12/2', 'Thursday 12/3', 'Friday 12/4', 'Saturday 12/5', 'Sunday 12/6'],
+          returnDays: ['Thursday 12/3', 'Friday 12/4', 'Saturday 12/5', 'Sunday 12/6', 'Monday 12/7'],
+          dinnerLabels: ['Thurs Dinner', 'Friday Dinner', 'Saturday Dinner', 'Sunday Dinner', 'Monday Dinner']
+        };
+        const entries = travelData.entries || [];
+
+        const existSel = document.getElementById('travelExistingSelect');
+        let existHtml = '<option value="NEW"' + (!selectedRowNum ? ' selected' : '') + '>➕ Add New Travel Entry</option>';
+        entries.forEach(e => {
+          const isSel = Number(selectedRowNum) === Number(e.rowNumber) ? ' selected' : '';
+          existHtml += '<option value="' + e.rowNumber + '"' + isSel + '>' + escapeHtmlClient(e.name) + '</option>';
+        });
+        existSel.innerHTML = existHtml;
+
+        const outSel = document.getElementById('travelOutboundDaySelect');
+        outSel.innerHTML = '<option value="">-- Select Outbound Day --</option>' +
+          (travelData.outboundDays || []).map(d => '<option value="' + escapeHtmlClient(d) + '">' + escapeHtmlClient(d) + '</option>').join('');
+
+        const retSel = document.getElementById('travelReturnDaySelect');
+        retSel.innerHTML = '<option value="">-- Select Return Day --</option>' +
+          (travelData.returnDays || []).map(d => '<option value="' + escapeHtmlClient(d) + '">' + escapeHtmlClient(d) + '</option>').join('');
+
+        const chipSet = new Set(DEFAULT_HOTEL_CHIPS);
+        entries.forEach(e => {
+          const parsed = parseHotelDisplayAndUrl(e.lodging);
+          if (parsed.name && parsed.name.toLowerCase() !== 'n/a') chipSet.add(parsed.name);
+        });
+        const chipsEl = document.getElementById('travelHotelChips');
+        chipsEl.innerHTML = Array.from(chipSet).map((h, idx) =>
+          '<button type="button" class="hotel-chip-btn" onclick="selectHotelChip(' + idx + ')" data-hotel="' + escapeHtmlClient(h) + '">🏨 ' + escapeHtmlClient(h) + '</button>'
+        ).join('');
+      }
+
+      function selectHotelChip(idx) {
+        const chipList = Array.from(new Set(DEFAULT_HOTEL_CHIPS));
+        if (chipList[idx]) {
+          document.getElementById('travelLodgingInput').value = chipList[idx];
+        }
+      }
+
+      function renderTravelDinnerButtons() {
+        const travelData = APP_STATE.raceTravel || {};
+        const dinnerLabels = travelData.dinnerLabels || ['Thurs Dinner', 'Friday Dinner', 'Saturday Dinner', 'Sunday Dinner', 'Monday Dinner'];
+        const container = document.getElementById('travelDinnerToggles');
+        if (!container) return;
+
+        const activeSet = new Set((TRAVEL_MODAL_CTX.dinners || []).map(d => d.toLowerCase()));
+        container.innerHTML = dinnerLabels.map((dl, idx) => {
+          const isActive = activeSet.has(dl.toLowerCase());
+          const shortLabel = DINNER_SHORT_LABELS[dl] || dl;
+          return '<button type="button" class="dinner-toggle-btn ' + (isActive ? 'active' : '') +
+            '" onclick="toggleTravelDinner(' + idx + ')">' +
+            (isActive ? '✅ ' : '') + escapeHtmlClient(shortLabel) + '</button>';
+        }).join('');
+      }
+
+      function toggleTravelDinner(idx) {
+        const travelData = APP_STATE.raceTravel || {};
+        const dinnerLabels = travelData.dinnerLabels || ['Thurs Dinner', 'Friday Dinner', 'Saturday Dinner', 'Sunday Dinner', 'Monday Dinner'];
+        const target = dinnerLabels[idx];
+        if (!target) return;
+        const cur = TRAVEL_MODAL_CTX.dinners || [];
+        const foundIdx = cur.findIndex(d => d.toLowerCase() === target.toLowerCase());
+        if (foundIdx >= 0) {
+          cur.splice(foundIdx, 1);
+        } else {
+          cur.push(target);
+        }
+        TRAVEL_MODAL_CTX.dinners = cur;
+        renderTravelDinnerButtons();
+      }
+
+      function loadTravelEntryIntoModal(rowNumber) {
+        const entries = (APP_STATE.raceTravel && APP_STATE.raceTravel.entries) || [];
+        const entry = entries.find(e => Number(e.rowNumber) === Number(rowNumber));
+
+        if (!entry) {
+          TRAVEL_MODAL_CTX.rowNumber = null;
+          TRAVEL_MODAL_CTX.originalName = '';
+          TRAVEL_MODAL_CTX.dinners = [];
+          document.getElementById('travelModalTitle').textContent = '✈️ Add Travel & Dinners';
+          document.getElementById('travelNameInput').value = '';
+          document.getElementById('travelOutboundDaySelect').value = 'Wednesday 12/2';
+          document.getElementById('travelOutboundDetails').value = '';
+          document.getElementById('travelReturnDaySelect').value = 'Sunday 12/6';
+          document.getElementById('travelReturnDetails').value = '';
+          document.getElementById('travelLodgingInput').value = '';
+          document.getElementById('travelOtherPlansInput').value = '';
+          document.getElementById('travelDeleteWrap').style.display = 'none';
+          renderTravelDinnerButtons();
+          return;
+        }
+
+        TRAVEL_MODAL_CTX.rowNumber = entry.rowNumber;
+        TRAVEL_MODAL_CTX.originalName = entry.name || '';
+        TRAVEL_MODAL_CTX.dinners = (entry.dinners || []).slice();
+
+        document.getElementById('travelModalTitle').textContent = '✈️ Edit Travel — ' + (entry.name || '');
+        document.getElementById('travelNameInput').value = entry.name || '';
+        document.getElementById('travelOutboundDaySelect').value = entry.outboundDay || '';
+        document.getElementById('travelOutboundDetails').value = entry.outboundDetails || '';
+        document.getElementById('travelReturnDaySelect').value = entry.returnDay || '';
+        document.getElementById('travelReturnDetails').value = entry.returnDetails || '';
+        document.getElementById('travelLodgingInput').value = entry.lodging || '';
+        document.getElementById('travelOtherPlansInput').value = entry.otherPlans || '';
+        document.getElementById('travelDeleteWrap').style.display = 'block';
+        renderTravelDinnerButtons();
+      }
+
+      function onTravelExistingChange(val) {
+        if (val === 'NEW' || !val) {
+          loadTravelEntryIntoModal(null);
+        } else {
+          loadTravelEntryIntoModal(Number(val));
+        }
+      }
+
+      function openTravelModal(rowNumber) {
+        populateClubDatalist();
+        populateTravelModalControls(rowNumber);
+        loadTravelEntryIntoModal(rowNumber);
+        document.getElementById('travelModalBackdrop').classList.add('open');
+      }
+
+      function closeTravelModal() {
+        document.getElementById('travelModalBackdrop').classList.remove('open');
+      }
+
+      function submitTravelModal() {
+        const name = document.getElementById('travelNameInput').value.trim();
+        if (!name) {
+          showToast('⚠️ Please enter your name(s).');
+          return;
+        }
+
+        const outboundDay = document.getElementById('travelOutboundDaySelect').value;
+        const outboundDetails = document.getElementById('travelOutboundDetails').value.trim();
+        const returnDay = document.getElementById('travelReturnDaySelect').value;
+        const returnDetails = document.getElementById('travelReturnDetails').value.trim();
+        const lodging = document.getElementById('travelLodgingInput').value.trim();
+        const otherPlans = document.getElementById('travelOtherPlansInput').value.trim();
+
+        const btn = document.getElementById('travelSaveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        const payload = {
+          rowNumber: TRAVEL_MODAL_CTX.rowNumber,
+          originalName: TRAVEL_MODAL_CTX.originalName,
+          name: name,
+          outboundDay: outboundDay,
+          outboundDetails: outboundDetails,
+          returnDay: returnDay,
+          returnDetails: returnDetails,
+          lodging: lodging,
+          dinners: TRAVEL_MODAL_CTX.dinners || [],
+          otherPlans: otherPlans,
+          coachEmail: getActiveCoachEmail(),
+          useTestSheet: Boolean(APP_STATE.useTestSheet)
+        };
+
+        google.script.run
+          .withSuccessHandler(newState => {
+            btn.disabled = false;
+            btn.textContent = 'Save Travel Info';
+            closeTravelModal();
+            APP_STATE = newState;
+            renderAll();
+            showToast('✅ Saved travel & dinner info for ' + name + '!');
+          })
+          .withFailureHandler(err => {
+            btn.disabled = false;
+            btn.textContent = 'Save Travel Info';
+            showToast('❌ Could not save travel info: ' + (err.message || err));
+          })
+          .saveRaceTravelEntry(payload);
+      }
+
+      function openDeleteTravelModal() {
+        if (!TRAVEL_MODAL_CTX.rowNumber) return;
+        document.getElementById('deleteTravelModalText').textContent =
+          'Remove "' + (TRAVEL_MODAL_CTX.originalName || 'this entry') + '" from the Anaheim Travel sheet?';
+        const btn = document.getElementById('confirmDeleteTravelBtn');
+        btn.disabled = false;
+        btn.textContent = 'Yes, Delete';
+        document.getElementById('deleteTravelModalBackdrop').classList.add('open');
+      }
+
+      function closeDeleteTravelModal() {
+        document.getElementById('deleteTravelModalBackdrop').classList.remove('open');
+      }
+
+      function executeDeleteTravel() {
+        if (!TRAVEL_MODAL_CTX.rowNumber) return;
+        const btn = document.getElementById('confirmDeleteTravelBtn');
+        btn.disabled = true;
+        btn.textContent = 'Deleting...';
+
+        const payload = {
+          rowNumber: TRAVEL_MODAL_CTX.rowNumber,
+          name: TRAVEL_MODAL_CTX.originalName,
+          coachEmail: getActiveCoachEmail(),
+          useTestSheet: Boolean(APP_STATE.useTestSheet)
+        };
+
+        google.script.run
+          .withSuccessHandler(newState => {
+            btn.disabled = false;
+            btn.textContent = 'Yes, Delete';
+            closeDeleteTravelModal();
+            closeTravelModal();
+            APP_STATE = newState;
+            renderAll();
+            showToast('🗑️ Deleted travel entry.');
+          })
+          .withFailureHandler(err => {
+            btn.disabled = false;
+            btn.textContent = 'Yes, Delete';
+            closeDeleteTravelModal();
+            showToast('❌ Could not delete travel entry: ' + (err.message || err));
+          })
+          .deleteRaceTravelEntry(payload);
       }
 
       initApp();
@@ -3211,6 +4367,8 @@ function getTrainingAppState(useTestSheet, claimedCoachEmail) {
   return {
     sessions: sessions,
     roster: getClubRoster(ss),
+    raceWaves: getRaceWavesState(ss),
+    raceTravel: getRaceTravelState(ss),
     isCoach: isUserCoach(ss, claimedCoachEmail),
     detectedEmail: getDetectedUserEmail(),
     useTestSheet: Boolean(useTestSheet),
@@ -3607,6 +4765,696 @@ function coachDeleteTrainingSession(payload) {
 
     SpreadsheetApp.flush();
     return getTrainingAppState(useTestSheet);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ==========================================
+// 8. HYROX ANAHEIM 2026 RACE HUB (START WAVES & TRAVEL)
+// ==========================================
+
+const RACE_DAYS_ORDER = ['Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DEFAULT_OUTBOUND_DAYS = ['Wednesday 12/2', 'Thursday 12/3', 'Friday 12/4', 'Saturday 12/5', 'Sunday 12/6'];
+const DEFAULT_RETURN_DAYS = ['Thursday 12/3', 'Friday 12/4', 'Saturday 12/5', 'Sunday 12/6', 'Monday 12/7'];
+const DEFAULT_DINNER_LABELS = ['Thurs Dinner', 'Friday Dinner', 'Saturday Dinner', 'Sunday Dinner', 'Monday Dinner'];
+
+/**
+ * Resiliently finds a sheet tab by exact trimmed name or regex pattern
+ */
+function getSheetByPattern(ss, exactName, regexPattern) {
+  if (!ss || typeof ss.getSheets !== 'function') return null;
+  const sheets = ss.getSheets() || [];
+  const targetTrim = String(exactName || '').trim().toLowerCase();
+  if (targetTrim) {
+    const byExact = sheets.find(sh => String((sh && sh.getName && sh.getName()) || '').trim().toLowerCase() === targetTrim);
+    if (byExact) return byExact;
+  }
+  if (regexPattern) {
+    const byRegex = sheets.find(sh => regexPattern.test(String((sh && sh.getName && sh.getName()) || '')));
+    if (byRegex) return byRegex;
+  }
+  return null;
+}
+
+function getRaceWavesSheet(ss) {
+  return getSheetByPattern(ss, SETTINGS.RACE_WAVES_TAB, /Hyrox\s+Anaheim\s+2026\s+times/i);
+}
+
+function getRaceTravelSheet(ss) {
+  return getSheetByPattern(ss, SETTINGS.RACE_TRAVEL_TAB, /Travel.*Anaheim.*2026/i);
+}
+
+function normalizeRaceDay(rawDay) {
+  const s = String(rawDay || '').trim();
+  if (/^thu/i.test(s)) return 'Thursday';
+  if (/^fri/i.test(s)) return 'Friday';
+  if (/^sat/i.test(s)) return 'Saturday';
+  if (/^sun/i.test(s)) return 'Sunday';
+  if (/^wed/i.test(s)) return 'Wednesday';
+  return s;
+}
+
+/**
+ * Parses and formats a wave time cell value (Date object or string like "9:50AM", "1:30 PM", "13:30")
+ */
+function parseAndFormatWaveTime(rawVal) {
+  if (!rawVal && rawVal !== 0) {
+    return { startWave: '', startMins: 9999 };
+  }
+  if (rawVal instanceof Date && !isNaN(rawVal.getTime())) {
+    const h24 = rawVal.getHours();
+    const min = rawVal.getMinutes();
+    const ampm = h24 >= 12 ? 'PM' : 'AM';
+    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+    const fmt = `${h12}:${min < 10 ? '0' + min : min} ${ampm}`;
+    return { startWave: fmt, startMins: h24 * 60 + min };
+  }
+  const str = String(rawVal || '').trim();
+  if (!str) return { startWave: '', startMins: 9999 };
+
+  const m = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (m) {
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    let mer = m[3] ? m[3].toUpperCase() : '';
+    if (!mer) {
+      if (h >= 13 && h <= 23) {
+        mer = 'PM';
+        h = h - 12;
+      } else if (h === 12) {
+        mer = 'PM';
+      } else if (h >= 1 && h <= 6) {
+        mer = 'PM';
+      } else {
+        mer = 'AM';
+      }
+    }
+    let h24 = h;
+    if (mer === 'PM' && h24 < 12) h24 += 12;
+    if (mer === 'AM' && h24 === 12) h24 = 0;
+    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+    const fmt = `${h12}:${min < 10 ? '0' + min : min} ${mer}`;
+    return { startWave: fmt, startMins: h24 * 60 + min };
+  }
+
+  return { startWave: str, startMins: 9999 };
+}
+
+/**
+ * Dynamically locates the header row and columns (1-indexed) in 'Hyrox Anaheim 2026 times'
+ */
+function findRaceWavesColumns(sheet) {
+  const maxCols = Math.max(7, sheet.getLastColumn());
+  const scanRows = Math.min(15, Math.max(1, sheet.getLastRow()));
+  const topRows = sheet.getRange(1, 1, scanRows, maxCols).getValues();
+
+  let headerRow = 1;
+  let bestScore = -1;
+  for (let r = 0; r < topRows.length; r++) {
+    let score = 0;
+    for (let c = 0; c < topRows[r].length; c++) {
+      const cell = String(topRows[r][c] || '').replace(/\s+/g, ' ').trim().toUpperCase();
+      if (cell === 'DAY' || cell.includes('START WAVE') || cell === 'DIVISION' ||
+          cell === 'NAME' || cell.includes('PARTNER')) {
+        score++;
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      headerRow = r + 1;
+    }
+  }
+
+  const headerVals = topRows[headerRow - 1] || [];
+  const cols = {
+    headerRow: headerRow,
+    dayCol: 1,
+    waveCol: 2,
+    divisionCol: 3,
+    nameCol: 4,
+    partner1Col: 5,
+    partner2Col: 6,
+    partner3Col: 7
+  };
+
+  headerVals.forEach((raw, idx) => {
+    const h = String(raw || '').replace(/\s+/g, ' ').trim().toUpperCase();
+    const colNum = idx + 1;
+    if (h === 'DAY') cols.dayCol = colNum;
+    else if (h.includes('START') || h.includes('WAVE')) cols.waveCol = colNum;
+    else if (h.includes('DIVISION')) cols.divisionCol = colNum;
+    else if (h === 'NAME' || h === 'ATHLETE') cols.nameCol = colNum;
+    else if (h.includes('PARTNER 2')) cols.partner2Col = colNum;
+    else if (h.includes('PARTNER 3')) cols.partner3Col = colNum;
+    else if (h.includes('DOUBLES') || h.includes('PARTNER')) cols.partner1Col = colNum;
+  });
+
+  return cols;
+}
+
+/**
+ * Reads all race wave entries from 'Hyrox Anaheim 2026 times'
+ */
+function getRaceWavesState(ss) {
+  const sheet = getRaceWavesSheet(ss);
+  if (!sheet) {
+    return { entries: [], days: RACE_DAYS_ORDER };
+  }
+
+  const cols = findRaceWavesColumns(sheet);
+  const lastRow = sheet.getLastRow();
+  const maxCol = Math.max(7, cols.partner3Col, sheet.getLastColumn());
+  const entries = [];
+
+  if (lastRow > cols.headerRow) {
+    const numRows = lastRow - cols.headerRow;
+    const data = sheet.getRange(cols.headerRow + 1, 1, numRows, maxCol).getValues();
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowNumber = cols.headerRow + 1 + i;
+      const day = normalizeRaceDay(row[cols.dayCol - 1]);
+      const waveParsed = parseAndFormatWaveTime(row[cols.waveCol - 1]);
+      const division = String(row[cols.divisionCol - 1] || '').trim();
+      const name = String(row[cols.nameCol - 1] || '').trim();
+      const partner1 = String(row[cols.partner1Col - 1] || '').trim();
+      const partner2 = String(row[cols.partner2Col - 1] || '').trim();
+      const partner3 = String(row[cols.partner3Col - 1] || '').trim();
+
+      if (!name && !division && !waveParsed.startWave && !partner1) continue;
+      if (/https?:\/\/|script\.google\.com/i.test(`${day} ${name}`)) continue;
+
+      entries.push({
+        rowNumber: rowNumber,
+        day: day || 'Thursday',
+        startWave: waveParsed.startWave,
+        startMins: waveParsed.startMins,
+        division: division,
+        name: name,
+        partner1: partner1,
+        partner2: partner2,
+        partner3: partner3
+      });
+    }
+  }
+
+  return {
+    entries: entries,
+    days: RACE_DAYS_ORDER
+  };
+}
+
+/**
+ * Resolves the target row number in 'Hyrox Anaheim 2026 times' for updating or deleting
+ */
+function resolveRaceWaveRowIndex(sheet, cols, rowNumber, matchName, matchDay) {
+  const lastRow = sheet.getLastRow();
+  const normName = String(matchName || '').trim().toLowerCase();
+  if (rowNumber > cols.headerRow && rowNumber <= lastRow) {
+    const curName = String(sheet.getRange(rowNumber, cols.nameCol).getValue() || '').trim().toLowerCase();
+    if (!normName || curName === normName) {
+      return rowNumber;
+    }
+  }
+  if (normName && lastRow > cols.headerRow) {
+    const numRows = lastRow - cols.headerRow;
+    const maxCol = Math.max(cols.nameCol, cols.dayCol);
+    const data = sheet.getRange(cols.headerRow + 1, 1, numRows, maxCol).getValues();
+    const normDay = normalizeRaceDay(matchDay).toLowerCase();
+    for (let i = 0; i < data.length; i++) {
+      const rName = String(data[i][cols.nameCol - 1] || '').trim().toLowerCase();
+      const rDay = normalizeRaceDay(data[i][cols.dayCol - 1]).toLowerCase();
+      if (rName === normName && (!normDay || rDay === normDay)) {
+        return cols.headerRow + 1 + i;
+      }
+    }
+    for (let i = 0; i < data.length; i++) {
+      const rName = String(data[i][cols.nameCol - 1] || '').trim().toLowerCase();
+      if (rName === normName) {
+        return cols.headerRow + 1 + i;
+      }
+    }
+  }
+  throw new Error('Could not find that race wave entry in the sheet. Please refresh and try again.');
+}
+
+/**
+ * Creates or updates an athlete/team row in 'Hyrox Anaheim 2026 times'
+ */
+function saveRaceWaveEntry(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const useTestSheet = Boolean(payload && payload.useTestSheet);
+    const ss = getSpreadsheetForMode(useTestSheet);
+    const sheet = getRaceWavesSheet(ss);
+    if (!sheet) {
+      throw new Error('Could not find the "Hyrox Anaheim 2026 times" tab in the spreadsheet.');
+    }
+
+    const name = String((payload && payload.name) || '').trim();
+    if (!name) throw new Error('Primary athlete name cannot be empty.');
+
+    const day = normalizeRaceDay((payload && payload.day) || 'Thursday');
+    const waveParsed = parseAndFormatWaveTime(payload && payload.startWave);
+    const division = String((payload && payload.division) || 'Womens Open').trim();
+    const partner1 = String((payload && payload.partner1) || '').trim();
+    const partner2 = String((payload && payload.partner2) || '').trim();
+    const partner3 = String((payload && payload.partner3) || '').trim();
+
+    const cols = findRaceWavesColumns(sheet);
+    const maxCol = Math.max(7, cols.partner3Col);
+    const rowValues = new Array(maxCol).fill('');
+    rowValues[cols.dayCol - 1] = day;
+    rowValues[cols.waveCol - 1] = waveParsed.startWave;
+    rowValues[cols.divisionCol - 1] = division;
+    rowValues[cols.nameCol - 1] = name;
+    rowValues[cols.partner1Col - 1] = partner1;
+    rowValues[cols.partner2Col - 1] = partner2;
+    rowValues[cols.partner3Col - 1] = partner3;
+
+    const reqRow = Number(payload && payload.rowNumber) || 0;
+    if (reqRow > 0) {
+      const targetRow = resolveRaceWaveRowIndex(
+        sheet,
+        cols,
+        reqRow,
+        payload.originalName || name,
+        payload.originalDay || day
+      );
+      sheet.getRange(targetRow, 1, 1, maxCol).setValues([rowValues]);
+    } else {
+      const lastRow = sheet.getLastRow();
+      const targetDayIdx = RACE_DAYS_ORDER.indexOf(day);
+      let insertAfterRow = cols.headerRow;
+      let lastDataRow = cols.headerRow;
+
+      if (lastRow > cols.headerRow) {
+        const numRows = lastRow - cols.headerRow;
+        const data = sheet.getRange(cols.headerRow + 1, 1, numRows, Math.max(cols.dayCol, cols.nameCol)).getValues();
+        for (let i = 0; i < data.length; i++) {
+          const rNum = cols.headerRow + 1 + i;
+          const rDay = normalizeRaceDay(data[i][cols.dayCol - 1]);
+          const rName = String(data[i][cols.nameCol - 1] || '').trim();
+          if (rDay || rName) {
+            lastDataRow = rNum;
+            const rDayIdx = RACE_DAYS_ORDER.indexOf(rDay);
+            if (targetDayIdx === -1 || (rDayIdx !== -1 && rDayIdx <= targetDayIdx)) {
+              insertAfterRow = rNum;
+            }
+          }
+        }
+      }
+
+      const targetRow = insertAfterRow + 1;
+      if (insertAfterRow < lastDataRow) {
+        sheet.insertRowBefore(targetRow);
+      }
+      sheet.getRange(targetRow, 1, 1, maxCol).setValues([rowValues]);
+    }
+
+    SpreadsheetApp.flush();
+    return getTrainingAppState(useTestSheet, payload && payload.coachEmail);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Deletes an athlete/team row from 'Hyrox Anaheim 2026 times'
+ */
+function deleteRaceWaveEntry(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const useTestSheet = Boolean(payload && payload.useTestSheet);
+    const ss = getSpreadsheetForMode(useTestSheet);
+    const sheet = getRaceWavesSheet(ss);
+    if (!sheet) {
+      throw new Error('Could not find the "Hyrox Anaheim 2026 times" tab in the spreadsheet.');
+    }
+
+    const cols = findRaceWavesColumns(sheet);
+    const targetRow = resolveRaceWaveRowIndex(
+      sheet,
+      cols,
+      Number(payload && payload.rowNumber) || 0,
+      payload && payload.name,
+      payload && payload.day
+    );
+    sheet.deleteRow(targetRow);
+
+    SpreadsheetApp.flush();
+    return getTrainingAppState(useTestSheet, payload && payload.coachEmail);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+const FULL_WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+function formatTravelHeaderCell(rawVal) {
+  if (!rawVal && rawVal !== 0) return '';
+  if (rawVal instanceof Date && !isNaN(rawVal.getTime())) {
+    const dayName = FULL_WEEKDAYS[rawVal.getDay()];
+    const m = rawVal.getMonth() + 1;
+    const d = rawVal.getDate();
+    return `${dayName} ${m}/${d}`;
+  }
+  return String(rawVal || '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Dynamically locates the main header row, sub-header row, and column mappings in 'Travel ✈️ Hyrox Anaheim 2026!! '
+ */
+function findRaceTravelColumns(sheet) {
+  const maxCols = Math.max(21, sheet.getLastColumn());
+  const scanRows = Math.min(12, Math.max(2, sheet.getLastRow()));
+  const topRows = sheet.getRange(1, 1, scanRows, maxCols).getValues();
+
+  let subHeaderRow = 2;
+  let bestSubScore = -1;
+  for (let r = 0; r < topRows.length; r++) {
+    let score = 0;
+    for (let c = 0; c < topRows[r].length; c++) {
+      const cell = formatTravelHeaderCell(topRows[r][c]);
+      if (/\d{1,2}\/\d{1,2}/.test(cell) || /dinner/i.test(cell)) {
+        score++;
+      }
+    }
+    if (score > bestSubScore) {
+      bestSubScore = score;
+      subHeaderRow = r + 1;
+    }
+  }
+
+  const mainHeaderRow = Math.max(1, subHeaderRow - 1);
+  const mainVals = topRows[mainHeaderRow - 1] || [];
+  const subVals = topRows[subHeaderRow - 1] || [];
+
+  let nameCol = 1;
+  let outboundStartCol = 2;
+  let returnStartCol = 8;
+  let lodgingCol = 14;
+  let dinnerStartCol = 16;
+  let otherPlansCol = 21;
+
+  for (let c = 0; c < mainVals.length; c++) {
+    const h = String(mainVals[c] || '').replace(/\s+/g, ' ').trim().toUpperCase();
+    const colNum = c + 1;
+    if (h === 'NAME') nameCol = colNum;
+    else if (h.includes('DEPARTURE FROM HOME') || h.includes('OUTBOUND')) outboundStartCol = colNum;
+    else if (h.includes('DEPARTURE FROM LA') || h.includes('RETURN')) returnStartCol = colNum;
+    else if (h.includes('LODGING') || h.includes('HOTEL')) lodgingCol = colNum;
+    else if (h.includes('DINNER')) dinnerStartCol = colNum;
+    else if (h.includes('OTHER PLANS')) otherPlansCol = colNum;
+  }
+
+  const outboundCols = [];
+  const returnCols = [];
+  const dinnerCols = [];
+
+  for (let c = 0; c < subVals.length; c++) {
+    const label = formatTravelHeaderCell(subVals[c]);
+    if (!label) continue;
+    const colNum = c + 1;
+    if (/dinner/i.test(label)) {
+      dinnerCols.push({ label: label, col: colNum });
+    } else if (colNum >= outboundStartCol && colNum < returnStartCol) {
+      outboundCols.push({ label: label, col: colNum });
+    } else if (colNum >= returnStartCol && colNum < lodgingCol) {
+      returnCols.push({ label: label, col: colNum });
+    }
+  }
+
+  if (outboundCols.length === 0) {
+    DEFAULT_OUTBOUND_DAYS.forEach((d, idx) => outboundCols.push({ label: d, col: 2 + idx }));
+  }
+  if (returnCols.length === 0) {
+    DEFAULT_RETURN_DAYS.forEach((d, idx) => returnCols.push({ label: d, col: 8 + idx }));
+  }
+  if (dinnerCols.length === 0) {
+    DEFAULT_DINNER_LABELS.forEach((d, idx) => dinnerCols.push({ label: d, col: 16 + idx }));
+  }
+
+  return {
+    mainHeaderRow: mainHeaderRow,
+    subHeaderRow: subHeaderRow,
+    nameCol: nameCol,
+    outboundCols: outboundCols,
+    returnCols: returnCols,
+    lodgingCol: lodgingCol,
+    dinnerCols: dinnerCols,
+    otherPlansCol: otherPlansCol
+  };
+}
+
+function isTruthyDinnerCell(val) {
+  const s = String(val || '').trim().toLowerCase();
+  if (!s) return false;
+  if (s === 'no' || s === 'n' || s === 'false' || s === '0' || s === '-') return false;
+  return true;
+}
+
+/**
+ * Reads all athlete travel, hotel, and dinner rows from 'Travel ✈️ Hyrox Anaheim 2026!! '
+ */
+function getRaceTravelState(ss) {
+  const sheet = getRaceTravelSheet(ss);
+  if (!sheet) {
+    return {
+      entries: [],
+      outboundDays: DEFAULT_OUTBOUND_DAYS,
+      returnDays: DEFAULT_RETURN_DAYS,
+      dinnerLabels: DEFAULT_DINNER_LABELS
+    };
+  }
+
+  const cols = findRaceTravelColumns(sheet);
+  const lastRow = sheet.getLastRow();
+  const maxCol = Math.max(21, cols.otherPlansCol, sheet.getLastColumn());
+  const entries = [];
+
+  if (lastRow > cols.subHeaderRow) {
+    const numRows = lastRow - cols.subHeaderRow;
+    const data = sheet.getRange(cols.subHeaderRow + 1, 1, numRows, maxCol).getValues();
+    const validReturnDaySet = new Set(cols.returnCols.map(rc => rc.label.toLowerCase()));
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowNumber = cols.subHeaderRow + 1 + i;
+      const name = String(row[cols.nameCol - 1] || '').trim();
+      if (!name) continue;
+      if (/https?:\/\/|script\.google\.com/i.test(name)) continue;
+
+      let rawOutbound = [];
+      for (const oc of cols.outboundCols) {
+        const text = String(row[oc.col - 1] || '').trim();
+        if (text) rawOutbound.push({ day: oc.label, details: text });
+      }
+
+      let rawReturn = [];
+      for (const rc of cols.returnCols) {
+        const text = String(row[rc.col - 1] || '').trim();
+        if (text) rawReturn.push({ day: rc.label, details: text });
+      }
+
+      // If an athlete duplicated their return trip text in both the outbound Sunday column and return Sunday column, deduplicate
+      if (rawOutbound.length > 1 && rawReturn.length > 0) {
+        const retTexts = new Set(rawReturn.map(r => r.details.replace(/\s+/g, ' ').trim().toLowerCase()));
+        rawOutbound = rawOutbound.filter(o => !retTexts.has(o.details.replace(/\s+/g, ' ').trim().toLowerCase()));
+      }
+
+      // If an athlete entered both their outbound flight and return flight inside the first date block (leaving returnCols blank), split cleanly
+      if (rawOutbound.length >= 2 && rawReturn.length === 0) {
+        const tail = rawOutbound.slice(1);
+        if (tail.every(t => validReturnDaySet.has(t.day.toLowerCase()))) {
+          rawReturn = tail;
+          rawOutbound = [rawOutbound[0]];
+        }
+      }
+
+      const lodging = String(row[cols.lodgingCol - 1] || '').trim();
+      const dinners = [];
+      for (const dc of cols.dinnerCols) {
+        if (isTruthyDinnerCell(row[dc.col - 1])) {
+          dinners.push(dc.label);
+        }
+      }
+      const otherPlans = String(row[cols.otherPlansCol - 1] || '').trim();
+
+      entries.push({
+        rowNumber: rowNumber,
+        name: name,
+        outbound: rawOutbound,
+        outboundDay: rawOutbound[0] ? rawOutbound[0].day : '',
+        outboundDetails: rawOutbound.map(o => o.details).join('\n\n'),
+        returnTrip: rawReturn,
+        returnDay: rawReturn[0] ? rawReturn[0].day : '',
+        returnDetails: rawReturn.map(r => r.details).join('\n\n'),
+        lodging: lodging,
+        dinners: dinners,
+        otherPlans: otherPlans
+      });
+    }
+  }
+
+  return {
+    entries: entries,
+    outboundDays: cols.outboundCols.map(c => c.label),
+    returnDays: cols.returnCols.map(c => c.label),
+    dinnerLabels: cols.dinnerCols.map(c => c.label)
+  };
+}
+
+/**
+ * Resolves the target row number in 'Travel ✈️ Hyrox Anaheim 2026!! '
+ */
+function resolveRaceTravelRowIndex(sheet, cols, rowNumber, matchName) {
+  const lastRow = sheet.getLastRow();
+  const normName = String(matchName || '').trim().toLowerCase();
+  if (rowNumber > cols.subHeaderRow && rowNumber <= lastRow) {
+    const curName = String(sheet.getRange(rowNumber, cols.nameCol).getValue() || '').trim().toLowerCase();
+    if (!normName || curName === normName) {
+      return rowNumber;
+    }
+  }
+  if (normName && lastRow > cols.subHeaderRow) {
+    const numRows = lastRow - cols.subHeaderRow;
+    const names = sheet.getRange(cols.subHeaderRow + 1, cols.nameCol, numRows, 1).getValues();
+    for (let i = 0; i < names.length; i++) {
+      if (String(names[i][0] || '').trim().toLowerCase() === normName) {
+        return cols.subHeaderRow + 1 + i;
+      }
+    }
+  }
+  return -1;
+}
+
+/**
+ * Creates or updates an athlete's travel, hotel & dinner row in 'Travel ✈️ Hyrox Anaheim 2026!! '
+ */
+function saveRaceTravelEntry(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const useTestSheet = Boolean(payload && payload.useTestSheet);
+    const ss = getSpreadsheetForMode(useTestSheet);
+    const sheet = getRaceTravelSheet(ss);
+    if (!sheet) {
+      throw new Error('Could not find the "Travel ✈️ Hyrox Anaheim 2026!!" tab in the spreadsheet.');
+    }
+
+    const name = String((payload && payload.name) || '').trim();
+    if (!name) throw new Error('Name cannot be empty.');
+
+    const cols = findRaceTravelColumns(sheet);
+    const reqRow = Number(payload && payload.rowNumber) || 0;
+    let targetRow = resolveRaceTravelRowIndex(sheet, cols, reqRow, payload.originalName || name);
+
+    if (targetRow === -1) {
+      // Check if an entry with this name already exists
+      targetRow = resolveRaceTravelRowIndex(sheet, cols, 0, name);
+    }
+
+    if (targetRow === -1) {
+      // Find the last row with a name, or start at subHeaderRow + 2 (leaving the single spacer row 3 intact if empty)
+      const lastRow = sheet.getLastRow();
+      let lastNamedRow = cols.subHeaderRow + 1;
+      if (lastRow > cols.subHeaderRow) {
+        const names = sheet.getRange(cols.subHeaderRow + 1, cols.nameCol, lastRow - cols.subHeaderRow, 1).getValues();
+        for (let i = 0; i < names.length; i++) {
+          if (String(names[i][0] || '').trim()) {
+            lastNamedRow = cols.subHeaderRow + 1 + i;
+          }
+        }
+      }
+      targetRow = lastNamedRow + 1;
+    }
+
+    const maxCol = Math.max(21, cols.otherPlansCol, sheet.getLastColumn());
+    const existingRow = targetRow <= sheet.getLastRow()
+      ? sheet.getRange(targetRow, 1, 1, maxCol).getValues()[0]
+      : new Array(maxCol).fill('');
+    const rowValues = existingRow.slice(0, maxCol);
+    while (rowValues.length < maxCol) rowValues.push('');
+
+    rowValues[cols.nameCol - 1] = name;
+
+    // Outbound columns
+    const outboundDay = String((payload && payload.outboundDay) || '').trim();
+    const outboundDetails = String((payload && payload.outboundDetails) || '').trim();
+    cols.outboundCols.forEach(oc => { rowValues[oc.col - 1] = ''; });
+    if (outboundDetails) {
+      const targetOutCol = cols.outboundCols.find(oc => oc.label.toLowerCase() === outboundDay.toLowerCase()) || cols.outboundCols[0];
+      if (targetOutCol) rowValues[targetOutCol.col - 1] = outboundDetails;
+    }
+
+    // Return columns
+    const returnDay = String((payload && payload.returnDay) || '').trim();
+    const returnDetails = String((payload && payload.returnDetails) || '').trim();
+    cols.returnCols.forEach(rc => { rowValues[rc.col - 1] = ''; });
+    if (returnDetails) {
+      const targetRetCol = cols.returnCols.find(rc => rc.label.toLowerCase() === returnDay.toLowerCase()) || cols.returnCols[0];
+      if (targetRetCol) rowValues[targetRetCol.col - 1] = returnDetails;
+    }
+
+    // Lodging
+    rowValues[cols.lodgingCol - 1] = String((payload && payload.lodging) || '').trim();
+
+    // Dinners
+    const selectedDinners = new Set(
+      Array.isArray(payload && payload.dinners)
+        ? payload.dinners.map(d => String(d || '').trim().toLowerCase())
+        : []
+    );
+    cols.dinnerCols.forEach(dc => {
+      rowValues[dc.col - 1] = selectedDinners.has(dc.label.toLowerCase()) ? 'Y' : '';
+    });
+
+    // Other Plans
+    rowValues[cols.otherPlansCol - 1] = String((payload && payload.otherPlans) || '').trim();
+
+    const targetRange = sheet.getRange(targetRow, 1, 1, maxCol);
+    targetRange.setValues([rowValues]);
+    targetRange.setVerticalAlignment('top');
+    targetRange.setWrap(true);
+
+    SpreadsheetApp.flush();
+    return getTrainingAppState(useTestSheet, payload && payload.coachEmail);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Deletes an athlete's travel row from 'Travel ✈️ Hyrox Anaheim 2026!! '
+ */
+function deleteRaceTravelEntry(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const useTestSheet = Boolean(payload && payload.useTestSheet);
+    const ss = getSpreadsheetForMode(useTestSheet);
+    const sheet = getRaceTravelSheet(ss);
+    if (!sheet) {
+      throw new Error('Could not find the "Travel ✈️ Hyrox Anaheim 2026!!" tab in the spreadsheet.');
+    }
+
+    const cols = findRaceTravelColumns(sheet);
+    const targetRow = resolveRaceTravelRowIndex(
+      sheet,
+      cols,
+      Number(payload && payload.rowNumber) || 0,
+      payload && payload.name
+    );
+    if (targetRow === -1) {
+      throw new Error('Could not find that travel entry in the sheet. Please refresh and try again.');
+    }
+    sheet.deleteRow(targetRow);
+
+    SpreadsheetApp.flush();
+    return getTrainingAppState(useTestSheet, payload && payload.coachEmail);
   } finally {
     lock.releaseLock();
   }
