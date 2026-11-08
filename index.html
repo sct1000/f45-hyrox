@@ -910,6 +910,91 @@
           margin: 12px auto;
         }
       }
+      @keyframes spinLoader {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes progressIndeterminate {
+        0% { transform: translateX(-100%) scaleX(0.35); }
+        50% { transform: translateX(0%) scaleX(0.65); }
+        100% { transform: translateX(100%) scaleX(0.35); }
+      }
+      .topbar-progress {
+        height: 3px;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        display: none;
+      }
+      .topbar-progress.active {
+        display: block;
+      }
+      .topbar-progress-bar {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #ff7a45, var(--brand), #ffb088);
+        animation: progressIndeterminate 1.25s infinite ease-in-out;
+        transform-origin: center;
+      }
+      .sync-banner {
+        max-width: 760px;
+        margin: 10px auto 0 auto;
+        padding: 0 12px;
+        display: none;
+      }
+      .sync-banner.active {
+        display: block;
+      }
+      .sync-banner-inner {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+        border-radius: 10px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      }
+      .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2.5px solid #fdba74;
+        border-top-color: var(--brand);
+        border-radius: 50%;
+        animation: spinLoader 0.75s linear infinite;
+        flex-shrink: 0;
+      }
+      .spinner-lg {
+        width: 24px;
+        height: 24px;
+        border-width: 3px;
+      }
+      .loading-status-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px 18px;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      }
+      .loading-status-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--navy);
+        margin-bottom: 2px;
+      }
+      .loading-status-sub {
+        font-size: 12.5px;
+        color: var(--muted);
+      }
     </style>
   </head>
   <body>
@@ -928,6 +1013,14 @@
           <button id="tabBtnStrava" class="nav-tab" onclick="switchTab('strava')">⚡ Strava</button>
         </div>
       </div>
+      <div id="topbarProgress" class="topbar-progress active"><div class="topbar-progress-bar"></div></div>
+    </div>
+
+    <div id="syncBanner" class="sync-banner active">
+      <div class="sync-banner-inner">
+        <div class="spinner"></div>
+        <span id="syncBannerText">Loading live data from Google Sheet…</span>
+      </div>
     </div>
 
     <!-- TAB 1: TRAINING SIGN-UP -->
@@ -943,6 +1036,13 @@
       </div>
 
       <div id="upcomingContainer">
+        <div class="loading-status-card">
+          <div class="spinner spinner-lg"></div>
+          <div>
+            <div class="loading-status-title">Loading Training Sessions…</div>
+            <div class="loading-status-sub">Fetching live sign-ups &amp; time slots from Google Sheets</div>
+          </div>
+        </div>
         <div class="session-card">
           <div class="session-header">
             <div class="skeleton-box" style="width: 140px; height: 20px; margin-bottom: 10px;"></div>
@@ -1605,12 +1705,51 @@
       };
       let ACTIVE_TAB = INITIAL_TAB;
       let PAST_OPEN = false;
+      let IS_LOADING = true;
+      let HAS_LOADED_STATE = false;
       let CLIENT_COACH_EMAIL = '';
       try {
         if (typeof localStorage !== 'undefined' && localStorage) {
           CLIENT_COACH_EMAIL = String(localStorage.getItem('hyrox_coach_email') || '').trim().toLowerCase();
         }
       } catch (e) {}
+
+      function getStateCacheKey() {
+        return 'hyrox_state_cache_v2_' + (INITIAL_USE_TEST ? 'test' : 'live');
+      }
+
+      function saveCachedState(state) {
+        try {
+          if (typeof localStorage !== 'undefined' && localStorage && state && !state.error) {
+            localStorage.setItem(getStateCacheKey(), JSON.stringify(state));
+          }
+        } catch (e) {}
+      }
+
+      function loadCachedState() {
+        try {
+          if (typeof localStorage !== 'undefined' && localStorage) {
+            const raw = localStorage.getItem(getStateCacheKey());
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && Array.isArray(parsed.sessions)) {
+                return parsed;
+              }
+            }
+          }
+        } catch (e) {}
+        return null;
+      }
+
+      function setLoadingIndicator(isLoading, message) {
+        IS_LOADING = Boolean(isLoading);
+        const prog = document.getElementById('topbarProgress');
+        const banner = document.getElementById('syncBanner');
+        const bannerText = document.getElementById('syncBannerText');
+        if (prog) prog.classList.toggle('active', IS_LOADING);
+        if (banner) banner.classList.toggle('active', IS_LOADING);
+        if (bannerText && message) bannerText.textContent = message;
+      }
 
       let MODAL_CTX = {
         rowNumber: null,
@@ -1641,6 +1780,10 @@
         });
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'Request failed');
+        if (data.state) {
+          HAS_LOADED_STATE = true;
+          saveCachedState(data.state);
+        }
         return data.state;
       }
 
@@ -1692,15 +1835,34 @@
         if (APP_STATE.spreadsheetUrl) {
           document.getElementById('sheetLink').href = APP_STATE.spreadsheetUrl;
         }
+
+        const cached = loadCachedState();
+        if (cached) {
+          APP_STATE = cached;
+          HAS_LOADED_STATE = true;
+          setLoadingIndicator(true, 'Syncing latest updates from Google Sheet…');
+          renderAll();
+        } else {
+          setLoadingIndicator(true, 'Loading live data from Google Sheet…');
+          renderAll();
+        }
+
         try {
           const state = await callApi('getState', {
             useTestSheet: Boolean(APP_STATE.useTestSheet),
             coachEmail: getActiveCoachEmail()
           });
           APP_STATE = state;
+          HAS_LOADED_STATE = true;
+          setLoadingIndicator(false);
           renderAll();
         } catch (err) {
-          APP_STATE.error = err.message || String(err);
+          setLoadingIndicator(false);
+          if (!HAS_LOADED_STATE) {
+            APP_STATE.error = err.message || String(err);
+          } else {
+            showToast('⚠️ Offline / sync error: showing cached data');
+          }
           renderAll();
         }
       }
@@ -1743,6 +1905,11 @@
         if (!sel) return;
         const prevVal = sel.value;
         const roster = APP_STATE.roster || [];
+        if (!HAS_LOADED_STATE && IS_LOADING && roster.length === 0) {
+          sel.innerHTML = '<option value="" disabled selected>⏳ Loading club roster from Google Sheet…</option>' +
+            '<option value="__NEW__">➕ Not listed? Add my name...</option>';
+          return;
+        }
         let html = '<option value="" disabled ' + (!prevVal ? 'selected' : '') + '>-- Choose your name --</option>';
         roster.forEach(name => {
           const isSel = prevVal === name ? ' selected' : '';
@@ -1777,6 +1944,30 @@
         if (APP_STATE.error) {
           upcomingEl.innerHTML = '<div class="session-card"><div class="session-body" style="color:#dc2626;">Error: ' +
             escapeHtmlClient(APP_STATE.error) + '</div></div>';
+          return;
+        }
+
+        if (!HAS_LOADED_STATE && IS_LOADING) {
+          upcomingEl.innerHTML =
+            '<div class="loading-status-card">' +
+              '<div class="spinner spinner-lg"></div>' +
+              '<div>' +
+                '<div class="loading-status-title">Loading Training Sessions…</div>' +
+                '<div class="loading-status-sub">Fetching live sign-ups &amp; time slots from Google Sheets</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="session-card">' +
+              '<div class="session-header">' +
+                '<div class="skeleton-box" style="width: 140px; height: 20px; margin-bottom: 10px;"></div>' +
+                '<div class="skeleton-box" style="width: 75%; height: 24px; margin-bottom: 8px;"></div>' +
+                '<div class="skeleton-box" style="width: 45%; height: 16px;"></div>' +
+              '</div>' +
+              '<div class="session-body">' +
+                '<div class="skeleton-box" style="width: 100%; height: 88px; margin-bottom: 10px;"></div>' +
+                '<div class="skeleton-box" style="width: 100%; height: 54px;"></div>' +
+              '</div>' +
+            '</div>';
+          pastWrap.style.display = 'none';
           return;
         }
 
@@ -2173,6 +2364,7 @@
       }
 
       async function refreshSessions() {
+        setLoadingIndicator(true, 'Refreshing from Google Sheet…');
         showToast('Refreshing from Google Sheet...');
         try {
           const newState = await callApi('getState', {
@@ -2180,9 +2372,11 @@
             coachEmail: getActiveCoachEmail()
           });
           APP_STATE = newState;
+          setLoadingIndicator(false);
           renderAll();
           showToast('Up to date!');
         } catch (err) {
+          setLoadingIndicator(false);
           showToast('❌ Error refreshing: ' + (err.message || err));
         }
       }
@@ -2678,6 +2872,27 @@
         const entries = waveData.entries || [];
         const days = waveData.days || ['Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+        if (!HAS_LOADED_STATE && IS_LOADING) {
+          pillsEl.innerHTML = '';
+          listEl.innerHTML =
+            '<div class="loading-status-card">' +
+              '<div class="spinner spinner-lg"></div>' +
+              '<div>' +
+                '<div class="loading-status-title">Loading Anaheim 2026 Start Waves…</div>' +
+                '<div class="loading-status-sub">Fetching race schedule &amp; athlete divisions from Google Sheets</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="session-card">' +
+              '<div class="session-body">' +
+                '<div class="skeleton-box" style="width: 180px; height: 22px; margin-bottom: 14px;"></div>' +
+                '<div class="skeleton-box" style="width: 100%; height: 52px; margin-bottom: 10px;"></div>' +
+                '<div class="skeleton-box" style="width: 100%; height: 52px; margin-bottom: 10px;"></div>' +
+                '<div class="skeleton-box" style="width: 100%; height: 52px;"></div>' +
+              '</div>' +
+            '</div>';
+          return;
+        }
+
         // Count per day
         const countsByDay = { ALL: entries.length };
         days.forEach(d => { countsByDay[d] = 0; });
@@ -2785,6 +3000,26 @@
         const summaryEl = document.getElementById('raceTravelSummaryContainer');
         const cardsEl = document.getElementById('raceTravelCardsContainer');
         if (!summaryEl || !cardsEl) return;
+
+        if (!HAS_LOADED_STATE && IS_LOADING) {
+          summaryEl.innerHTML = '';
+          cardsEl.innerHTML =
+            '<div class="loading-status-card">' +
+              '<div class="spinner spinner-lg"></div>' +
+              '<div>' +
+                '<div class="loading-status-title">Loading Travel, Hotels &amp; Dinner RSVPs…</div>' +
+                '<div class="loading-status-sub">Fetching live Anaheim 2026 travel sheet rows</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="session-card">' +
+              '<div class="session-body">' +
+                '<div class="skeleton-box" style="width: 60%; height: 22px; margin-bottom: 12px;"></div>' +
+                '<div class="skeleton-box" style="width: 100%; height: 76px; margin-bottom: 10px;"></div>' +
+                '<div class="skeleton-box" style="width: 100%; height: 76px;"></div>' +
+              '</div>' +
+            '</div>';
+          return;
+        }
 
         const travelData = APP_STATE.raceTravel || {
           entries: [],
