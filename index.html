@@ -998,13 +998,38 @@
         return String(APP_STATE.detectedEmail || CLIENT_COACH_EMAIL || '').trim().toLowerCase();
       }
 
+      function syncCanonicalUrl(normalizedTab, pushHistory) {
+        if (typeof window.history === 'undefined' || !window.history.replaceState) return;
+        try {
+          const url = new URL(window.location.href);
+          url.pathname = url.pathname.replace(/\/(strava|training)\/?$/i, '/');
+          url.searchParams.delete('page');
+          url.searchParams.delete('tab');
+          url.searchParams.delete('strava');
+          url.searchParams.delete('training');
+          url.hash = '#' + normalizedTab;
+          if (url.href !== window.location.href) {
+            if (pushHistory && window.history.pushState) {
+              window.history.pushState({ tab: normalizedTab }, '', url.toString());
+            } else {
+              window.history.replaceState({ tab: normalizedTab }, '', url.toString());
+            }
+          }
+        } catch (e) {}
+      }
+
       async function initApp() {
         switchTab(ACTIVE_TAB, false);
+        syncCanonicalUrl(ACTIVE_TAB, false);
         window.addEventListener('hashchange', () => {
-          switchTab(resolveTabFromLocation(), false);
+          const nextTab = resolveTabFromLocation();
+          switchTab(nextTab, false);
+          syncCanonicalUrl(nextTab, false);
         });
         window.addEventListener('popstate', () => {
-          switchTab(resolveTabFromLocation(), false);
+          const nextTab = resolveTabFromLocation();
+          switchTab(nextTab, false);
+          syncCanonicalUrl(nextTab, false);
         });
         document.getElementById('testBadge').style.display = APP_STATE.useTestSheet ? 'inline-block' : 'none';
         if (APP_STATE.spreadsheetUrl) {
@@ -1032,30 +1057,8 @@
         document.getElementById('tabBtnTraining').classList.toggle('active', normalizedTab === 'training');
         document.getElementById('tabBtnStrava').classList.toggle('active', normalizedTab === 'strava');
 
-        if (updateUrl && typeof window.history !== 'undefined' && window.history.pushState) {
-          try {
-            const url = new URL(window.location.href);
-            // Normalize /strava or /training path suffix back to base path when switching tabs
-            url.pathname = url.pathname.replace(/\/(strava|training)\/?$/i, '/');
-            if (url.searchParams.has('page') || url.searchParams.has('tab')) {
-              url.searchParams.delete('tab');
-              if (normalizedTab === 'strava') {
-                url.searchParams.set('page', 'strava');
-              } else {
-                url.searchParams.delete('page');
-              }
-              url.hash = '';
-            } else {
-              url.hash = normalizedTab === 'strava' ? '#strava' : '';
-            }
-            if (url.href !== window.location.href) {
-              if (changed) {
-                window.history.pushState({ tab: normalizedTab }, '', url.toString());
-              } else {
-                window.history.replaceState({ tab: normalizedTab }, '', url.toString());
-              }
-            }
-          } catch (e) {}
+        if (updateUrl) {
+          syncCanonicalUrl(normalizedTab, changed);
         }
       }
 
