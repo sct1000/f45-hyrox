@@ -920,8 +920,26 @@
     <script>
       const SCRIPT_API_URL = 'https://script.google.com/macros/s/AKfycbz6EGMxjderUNj_UaP8eYquNdXSv9vnONDBbN674-WwPpd2kfiKKH_j3T3ZtlJjdq1eog/exec';
       const URL_PARAMS = new URLSearchParams(window.location.search || '');
-      const INITIAL_USE_TEST = URL_PARAMS.get('test') === '1' || URL_PARAMS.get('test') === 'true';
-      const INITIAL_TAB = (URL_PARAMS.get('page') || '').toLowerCase() === 'strava' ? 'strava' : 'training';
+      const INITIAL_USE_TEST = URL_PARAMS.get('test') === '1' || URL_PARAMS.get('test') === 'true' || URL_PARAMS.has('test') && URL_PARAMS.get('test') !== '0';
+
+      function resolveTabFromLocation() {
+        const hash = String(window.location.hash || '').replace(/^#\/?/, '').trim().toLowerCase();
+        if (hash === 'strava' || hash.startsWith('strava')) return 'strava';
+        if (hash === 'training' || hash.startsWith('training')) return 'training';
+
+        const params = new URLSearchParams(window.location.search || '');
+        const pageParam = String(params.get('page') || params.get('tab') || '').trim().toLowerCase();
+        if (pageParam === 'strava' || params.has('strava')) return 'strava';
+        if (pageParam === 'training' || params.has('training')) return 'training';
+
+        const path = String(window.location.pathname || '').replace(/\/+$/, '').toLowerCase();
+        if (path.endsWith('/strava')) return 'strava';
+        if (path.endsWith('/training')) return 'training';
+
+        return 'training';
+      }
+
+      const INITIAL_TAB = resolveTabFromLocation();
 
       let APP_STATE = {
         sessions: [],
@@ -981,7 +999,13 @@
       }
 
       async function initApp() {
-        switchTab(ACTIVE_TAB);
+        switchTab(ACTIVE_TAB, false);
+        window.addEventListener('hashchange', () => {
+          switchTab(resolveTabFromLocation(), false);
+        });
+        window.addEventListener('popstate', () => {
+          switchTab(resolveTabFromLocation(), false);
+        });
         document.getElementById('testBadge').style.display = APP_STATE.useTestSheet ? 'inline-block' : 'none';
         if (APP_STATE.spreadsheetUrl) {
           document.getElementById('sheetLink').href = APP_STATE.spreadsheetUrl;
@@ -999,12 +1023,40 @@
         }
       }
 
-      function switchTab(tab) {
-        ACTIVE_TAB = tab;
-        document.getElementById('tabTraining').style.display = tab === 'training' ? 'block' : 'none';
-        document.getElementById('tabStrava').style.display = tab === 'strava' ? 'block' : 'none';
-        document.getElementById('tabBtnTraining').classList.toggle('active', tab === 'training');
-        document.getElementById('tabBtnStrava').classList.toggle('active', tab === 'strava');
+      function switchTab(tab, updateUrl = true) {
+        const normalizedTab = tab === 'strava' ? 'strava' : 'training';
+        const changed = ACTIVE_TAB !== normalizedTab;
+        ACTIVE_TAB = normalizedTab;
+        document.getElementById('tabTraining').style.display = normalizedTab === 'training' ? 'block' : 'none';
+        document.getElementById('tabStrava').style.display = normalizedTab === 'strava' ? 'block' : 'none';
+        document.getElementById('tabBtnTraining').classList.toggle('active', normalizedTab === 'training');
+        document.getElementById('tabBtnStrava').classList.toggle('active', normalizedTab === 'strava');
+
+        if (updateUrl && typeof window.history !== 'undefined' && window.history.pushState) {
+          try {
+            const url = new URL(window.location.href);
+            // Normalize /strava or /training path suffix back to base path when switching tabs
+            url.pathname = url.pathname.replace(/\/(strava|training)\/?$/i, '/');
+            if (url.searchParams.has('page') || url.searchParams.has('tab')) {
+              url.searchParams.delete('tab');
+              if (normalizedTab === 'strava') {
+                url.searchParams.set('page', 'strava');
+              } else {
+                url.searchParams.delete('page');
+              }
+              url.hash = '';
+            } else {
+              url.hash = normalizedTab === 'strava' ? '#strava' : '';
+            }
+            if (url.href !== window.location.href) {
+              if (changed) {
+                window.history.pushState({ tab: normalizedTab }, '', url.toString());
+              } else {
+                window.history.replaceState({ tab: normalizedTab }, '', url.toString());
+              }
+            }
+          } catch (e) {}
+        }
       }
 
       function showToast(msg) {
